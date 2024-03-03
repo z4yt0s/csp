@@ -1,6 +1,6 @@
 # author: z4yt0s
 # date: 02.29.2024
-# github: https://github.com/z4yt0s/
+# github: https://github.com/z4yt0s/csp
 
 from typing import Union, NoReturn, ClassVar, Dict, List, Tuple
 from argparse import ArgumentParser, Namespace
@@ -177,8 +177,8 @@ def start_args() -> Union[Namespace]:
         action='store',
         type=str,
         metavar='',
-        default='_',
-        help='Specify the character used as a separator between words'
+        default=' ',
+        help='Specify the character used as a separator between words [default: space]'
     )
     parser.add_argument(
         '-sc', '--specialchar',
@@ -242,7 +242,7 @@ def check_and_set_args(args: Namespace, vs: Visuals) -> str:
             )
             password = input()
         vs.console.print(
-            f'[?] The password \[{password}] its correct [Y/n]: ',
+            f'[?] The password |{password}| its correct [Y/n]: ',
             style='yellow',
             end=''
         )
