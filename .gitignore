@@ -1,3 +1,5 @@
 /test_prompt_toolkit/*
 /src/test.db
 /src/test/*
+/src/utils/__pycache__
+/src/modules/__pycache__
