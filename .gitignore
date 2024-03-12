@@ -1,0 +1,3 @@
+./test_prompt_toolkit/*
+./src/test.db
+./src/test/*
