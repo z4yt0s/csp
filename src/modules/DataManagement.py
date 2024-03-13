@@ -1,4 +1,13 @@
-from typing import Self, Any, List, Dict, NoReturn, Union, ClassVar
+from typing import (
+    Self,
+    Any, 
+    List, 
+    Dict, 
+    NoReturn, 
+    Union, 
+    ClassVar,
+    Tuple
+)
 from functools import wraps
 from os import path
 from sys import exc_info
@@ -18,6 +27,15 @@ from sqlite3 import (
 # manejador de errores
 
 class DataManagement:
+    """
+    DataManagement class handles database operations for the CSP tool
+    
+    Attributes:
+        _instance (ClassVar[Any]): Stores the single instance of DataManagement.
+        _DB_PATH (ClassVar[str]): The path to the SQLite database file.
+        _QUERIES (ClassVar[Dict[str, str]]): A dictionary containing predefinied
+        SQL queries.
+    """
     _instance = None
     #_DB_PATH: str = '~/.csp/data.db'
     _DB_PATH: ClassVar[str] = '../test.db'
@@ -69,6 +87,19 @@ class DataManagement:
     }
 
     def __new__(cls, masterkey: str = None, *args, **kwargs) -> Self:
+        """
+        Implementation of the Singleton pattern for the DataManagement class. 
+        It ensures that only one instance of this class is created during the
+        entire runtime. If an instance already exists, it returns the 
+        existing instance. If it does not, it creates a new one.
+        
+        Args:
+            masterkey (str, optional): Master key for database authentication.
+            default None.
+            
+        Returns:
+            Self: Instance of the DataManagement class.
+        """
         if cls._instance is not None:
             return cls._instance
         cls._create_database(masterkey)
@@ -76,10 +107,29 @@ class DataManagement:
         return cls._instance
 
     def __init__(self, *args, **kwargs) -> None:
+        """
+        Initializes a DataManagement instace.
+
+        Atributes:
+            conn (Connection): Represents the connection to the SQLite database
+            cursor (Cursor): Represents the cursor used to execute SQL queries
+        """
         self.conn: Connection = connect(DataManagement._DB_PATH)
         self.cursor: Cursor = self.conn.cursor()
 
     def handler_err_db(method):
+        """
+        Decorator funtion for handling database errors. This catches any exeptions
+        that occur during the execution of the decorated method, prints info about
+        error, and then either saves and exits if the error is critical or just
+        saves if the error is non-critical,
+
+        Args:
+            method (Callable): The method to be decorated.
+        
+        Returns:
+            Callable: The decorated method
+        """
         @wraps(method)
         def wrapper(self_cls, *args, **kwargs):
             try:
@@ -105,6 +155,15 @@ class DataManagement:
 
     @classmethod
     def predefined_sql(cls, key_query: str) -> str:
+        """
+        Retrieves a predefinied SQL query from the _QUERIES dictionary.
+
+        Args:
+            key_query (str): The key of the quey to retrieve.
+            
+        Returns:
+            str: The SQL query string.
+        """
         try:
             return cls._QUERIES[key_query]
         except KeyError as ke:
@@ -113,6 +172,13 @@ class DataManagement:
 
     @classmethod
     def _create_database(cls, masterkey) -> None:
+        """
+        Create the SQLite database if the doesn't exist and set the master key.
+        
+        Args:
+            cls: The class object.
+            masterkey (str): The master key to be set for the database.
+        """
         try:
             conn: Connection = connect(cls._DB_PATH)
             cursor: Cursor = conn.cursor()
@@ -134,6 +200,15 @@ class DataManagement:
     
     @classmethod
     def masterkey_exists(cls, conn: Connection=None) -> bool: #Union[bool, OperationalError]:
+        """
+        Checks if the master key exists in the database.
+
+        Args:
+            conn (Connection, optional): An SQLite database connecition.
+
+        Returns:
+            bool: True if the master key exists, False otherwise.
+        """
         try:
             if conn is None:
                 conn: Connection = connect(cls._DB_PATH)
@@ -151,6 +226,16 @@ class DataManagement:
     # in future store masterkey in cache so as not to query the db
     @handler_err_db
     def check_master_key(self, masterkey: str) -> bool:
+        """
+        Checks if the provided master key matches the stored master key in the
+        database.
+
+        Args:
+            masterkey (str): The master key to check
+        
+        Returns:
+            bool: True if the master key is correct, False otherwise.
+        """
         query: str = DataManagement.predefined_sql('get_masterkey')
         cursor: Cursor = self.cursor.execute(query)
         masterkey_db: str = cursor.fetchone()
@@ -161,6 +246,16 @@ class DataManagement:
         
     @handler_err_db
     def reset_master_key(self, old_masterkey: str, new_masterkey: str) -> bool:
+        """
+        Resets the master key to a new value.
+        
+        Args:
+            old_masterkey (str): The current masterkey stored in database.
+            new_masterkey (str): The new master key.
+        
+        Returns:
+            bool: True if the master key is reset successfully, False otherwise
+        """
         if not self.check_master_key(old_masterkey):
             return False
         query: str = DataManagement.predefined_sql('set_masterkey')
@@ -168,7 +263,20 @@ class DataManagement:
         return True
 
     @handler_err_db
-    def list_data(self, field=None, data_to_find=None) -> List[Any]:
+    def list_data(self, field=None, data_to_find=None) -> List[Tuple[Any]]:
+        """
+        Retrieve data from the database based on the specified field and data
+        to find. If no field or data_to_find is provided, it returns all data
+        from the database.
+
+        Args:
+            field (str, optional): The field to search for data.
+            data_to_find (Any, optional): The data to find in the specified
+            field.
+
+        Returns:
+            List[Tuple[Any]]: A list of tuples containing the retrieved data.
+        """
         if field is not None and data_to_find is not None:
             # trow raise in the future
             #if field not in ['id', 'site', 'username', 'password']:
@@ -185,17 +293,43 @@ class DataManagement:
 
     @handler_err_db
     def new_entry(self, password: str, site: str=None, username: str=None) -> bool:
+        """
+        Adds a new entry to the database.
+
+        Args:
+            password (str): The password for the new entry.
+            site (str, optional): The site name associated with the new entry.
+            username (str, optional): The username associated with the new entry.
+        
+        Returns:
+            bool: True if the new entry is added successfully, False otherwise.
+        """
         query: str = DataManagement.predefined_sql('set_data')
         self.cursor.execute(query, (site, username, password,))
         return True
 
     @handler_err_db
     def delete_data(self, id: int) -> bool:
+        """
+        Delete data from the database. (Only with the id)
+
+        Args:
+            id (int): The ID of the data to delete.
+
+        Returns:
+            bool: True if the data is deleted successfully, False otherwise.
+        """
         query: str = DataManagement.predefined_sql('delete_data')
         self.cursor.execute(query, (id,))
         return True
     
     def save_and_exit(self, exit: bool = False):
+        """
+        Commits changes to the database and closes the connecion.
+
+        Args:
+            exit (bool, optional): Indicates whether to exit the tool.
+        """
         self.conn.commit()
         if exit:
             self.conn.close()
