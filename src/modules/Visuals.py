@@ -1,13 +1,15 @@
 # author: z4yt0s
 # date: 02.29.2024
 # github: https://github.com/z4yt0s/csp
-from typing import ClassVar, List, Tuple, Union
+from typing import ClassVar, Tuple, Union, Literal, List
+from time import sleep
 
-from rich.console import Console
-from rich.align import Align
-from rich.table import Table
-from rich.text import Text
 from rich.theme import Theme
+from rich.console import Console
+from rich.text import Text
+from rich.table import Table
+from rich.align import Align
+from rich.live import Live
 from rich import box
 
 class Visuals:
@@ -75,9 +77,9 @@ class Visuals:
             console (Console): Instance of rich.Console for handling console output.
         """
         self.console: Console = Console(
-            color_system='256', 
-            tab_size=4,
-            theme=Visuals.CONSOLE_THEME
+            color_system='truecolor', 
+            theme=Visuals.CONSOLE_THEME,
+            tab_size=4
         )
     
     def banner(self) -> None:
@@ -118,11 +120,11 @@ class Visuals:
         ]
 
         for line in name:
-            text_name.append(f'{line}', style='bold green4')
+            text_name.append(f'{line}', style=f'{Visuals.COLORS['b_dark_green']}')
         for line in logo:
-            text_logo.append(f'{line}', style='bold dodger_blue3')
+            text_logo.append(f'{line}', style=f'{Visuals.COLORS['b_dark_blue']}')
         for line in footern:
-            text_footern.append(f'{line}', style='bold purple4')
+            text_footern.append(f'{line}', style=f'{Visuals.COLORS['b_dark_purple']}')
         
         table_banner: Table = Table.grid(padding=2)
         table_banner.add_column(no_wrap=2)
@@ -133,20 +135,81 @@ class Visuals:
         self.console.print(table_banner)
         self.console.print(text_footern)
     
-    def represent_raw_data(self, raw_data: List[Tuple[Union[str, int, None]]]):
-        table = Table(
-            title='CSP Database',
-            show_lines=False,
-            #box=box.MINIMAL_DOUBLE_HEAD
-            box=box.DOUBLE_EDGE
-            #border_style=Visuals.COLORS['']
+    def render_table_db(
+            self,
+            proc_data: List[Tuple[Union[str, int, None]]],
+            theme: Literal['cold', 'warm']='cold'
+    ) -> None:
+        table: Table = Table(
+            padding=(0, 1),
+            box=box.DOUBLE_EDGE,
+            border_style=f'{Visuals.COLORS['grey']}'
         )
-        table.add_column('Id', justify='left', style=f'{Visuals.COLORS['purple']}')
-        table.add_column('Site', justify='left', style=f'{Visuals.COLORS['green']}')
-        table.add_column('Username', justify='left', style=f'{Visuals.COLORS['blue']}')
-        table.add_column('Password', justify='left', style=f'{Visuals.COLORS['yellow']}')
 
-        for tuple_data in raw_data:
-            table.add_row(str(tuple_data[0]), str(tuple_data[1]), str(tuple_data[2]), str(tuple_data[3]))
+        with Live(table, console=self.console, refresh_per_second=10):
+            if not theme == 'cold':
+                table.add_column(
+                    'Ids', 
+                    justify='left', 
+                    header_style='b_dark_pink'
+                )
+                table.add_column(
+                    'Sites',
+                    justify='left',
+                    header_style='b_dark_orange'
+                )
+                table.add_column(
+                    'Usernames',
+                    justify='left',
+                    header_style='b_dark_yellow'
+                )
+                table.add_column(
+                    'Passwords',
+                    justify='left',
+                    header_style='b_dark_red'
+                )
+                table.columns[0].style = f'pink'
+                table.columns[1].style = f'orange'
+                table.columns[2].style = f'yellow'
+                table.columns[3].style = f'red'
+            else:
+                table.add_column(
+                    'Ids', 
+                    justify='left', 
+                    header_style='b_dark_pink'
+                )
+                table.add_column(
+                    'Sites',
+                    justify='left',
+                    header_style='b_dark_purple'
+                )
+                table.add_column(
+                    'Usernames',
+                    justify='left',
+                    header_style='b_dark_blue'
+                )
+                table.add_column(
+                    'Passwords',
+                    justify='left',
+                    header_style='b_dark_green'
+                )
+                table.columns[0].style = f'pink'
+                table.columns[1].style = f'purple'
+                table.columns[2].style = f'blue'
+                table.columns[3].style = f'green'
+            sleep(0.15)
 
-        self.console.print(table)
+            # proc and represent row data
+            for row_data in proc_data:
+                    table.add_row(*self._parser_row_data(row_data))
+                    sleep(0.15)
+
+    def _parser_row_data(self, row_data: List[Union[str, int, None]]) -> List[str]:
+        str_row_data: List[str] = []
+        for data in row_data:
+            if data is None:
+                str_row_data.append(
+                    f'[{Visuals.COLORS['grey']}]-[/{Visuals.COLORS['grey']}]'
+                ); continue
+            str_row_data.append(str(data))
+        return str_row_data
