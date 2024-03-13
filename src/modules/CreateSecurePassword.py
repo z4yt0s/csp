@@ -6,10 +6,10 @@ from typing import ClassVar, Tuple, List, Dict
 
 class CreateSecurePasswords:
     """
-    CreateSecurePasswords: Handles the creation of strong passwords based on a]
+    CreateSecurePasswords: Handles the creation of strong passwords based on a
     given phrase pattern.
 
-    Attrubutes:
+    Attributes:
         DICTIONARY_LETTER (ClassVar[Dict[str, str]]): A dictionary mapping specific
         letters to their corresponding replacements for creating strong passwords.
     """
