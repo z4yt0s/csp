@@ -43,11 +43,11 @@ class StartPrompt:
     def __init__(self) -> None:
         """
         initialize the instance of class StartPrompt.
-        
+
         Attributes:
             visuals (Visuals): start the instance of Visual.
             data_management (DataManagement): start the instance of DataManagement.
-        
+
         Description:
             The StartPrompt class initializes visual elements for console 
             interaction, checks for the existence of a master key, initializes
@@ -177,7 +177,6 @@ class StartPrompt:
 class Commands:
     CSP_COMPLETER: ClassVar[Dict[str, Dict[str, None]]] = {
         'list': {
-            'all': None,
             'id': None,
             'site': None,
             'username': None,
@@ -188,17 +187,13 @@ class Commands:
             'username': None,
             'password': None,
         },
-        'del': {
-            'id': None,
-            'site': None,
-            'username': None,
-            'password': None,
-        },
+        'del': None,
         'upd':{
             'site': None,
             'username': None,
             'password': None,
         },
+        'exit': None,
         'help': {
             'list': None,
             'add': None,
@@ -220,9 +215,9 @@ class Commands:
             case 'add':
                 self.add(args)
             case 'del':
-                self.delete()
+                self.delete(args)
             case 'upd':
-                self.update()
+                self.update(args)
             case 'help':
                 self.help()
             case 'exit':
@@ -245,13 +240,13 @@ class Commands:
         self.visuals.console.print('help     show help for commands', style='blue')
     
     def list(self, args: List[str]):
+        # check the raw_data previus render table (IMPLEMENTS TOMORROW)
         args = args[:2]
         if len(args) == 2:
             field: str; data_to_find: str; raw_data: List[Tuple[Union[str, int]]]
             field, data_to_find = args
             raw_data = self.data_management.list_data(field, data_to_find)
-            # temporal visualization
-            print(raw_data)
+            self.visuals.render_table_db(raw_data)
             return
         raw_data = self.data_management.list_data()
         self.visuals.render_table_db(raw_data)
@@ -273,10 +268,36 @@ class Commands:
                 style='blue'
             )
 
+    def update(self, args: List[Union[str, int]]):
+        field: str = args[0]
+        data_upd: str = args[1]
+        id: int = args[2]
+
+        if self.data_management.update_data(field, data_upd, id):
+            self.visuals.console.print(
+                '[*] Data Updated Correctly',
+                style='blue'
+            )
+
     def delete(self, args: List[str]):
-        pass
+        id: int = args[0]
+
+        if self.data_management.delete_data(id):
+            self.visuals.console.print(
+                '[*] Data Deleted Correctly',
+                style='blue'
+            )
     
-    def update(self):
-        pass
+    def exit_prompt(self):
+        self.visuals.console.print(
+            '[*] Closing connection to database.',
+            style='yellow'
+        )
+        self.data_management.save_and_exit(True)
+        self.visuals.console.print(
+            '[!] Exiting...',
+            style='red'
+        )
+        exit(0)
             
 prompt = StartPrompt()
