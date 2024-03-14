@@ -75,7 +75,7 @@ class DataManagement:
     ''',
     'update_data': '''
         UPDATE login SET | = ?
-        WHERE id != 1 AND | = ?
+        WHERE id != 1 AND id = ?
     ''',
     'drop_data': '''
         DELETE FROM login 
@@ -309,6 +309,25 @@ class DataManagement:
         return True
 
     @handler_err_db
+    def update_data(self, field: str, data_upd: str, id: int) -> bool:
+        """
+        Update the values of a entry to the database.
+
+        Args:
+            field (str): name of field of the table
+            data_upd (str): data to update or replace.
+            id (int): id of registry
+        
+        Return:
+            bool: True if the new entry is added successfully, False otherwise.
+        """
+        tmp_query: str = DataManagement.predefined_sql('update_data')
+        query: str = tmp_query.replace('|', field)
+        
+        self.cursor.execute(query, (data_upd, id,))
+        return True
+
+    @handler_err_db
     def delete_data(self, id: int) -> bool:
         """
         Delete data from the database. (Only with the id)
@@ -319,7 +338,7 @@ class DataManagement:
         Returns:
             bool: True if the data is deleted successfully, False otherwise.
         """
-        query: str = DataManagement.predefined_sql('delete_data')
+        query: str = DataManagement.predefined_sql('drop_data')
         self.cursor.execute(query, (id,))
         return True
     
