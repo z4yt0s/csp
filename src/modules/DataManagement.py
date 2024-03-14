@@ -1,16 +1,12 @@
 from typing import (
     Self,
-    Any, 
-    List, 
-    Dict, 
-    NoReturn, 
-    Union, 
+    Callable,
     ClassVar,
-    Tuple
+    Tuple,
+    Any,
+    List,
+    Dict
 )
-from functools import wraps
-from os import path
-from sys import exc_info
 from sqlite3 import (
     connect,
     Cursor,
@@ -18,6 +14,10 @@ from sqlite3 import (
     Error,
     OperationalError
 )
+from functools import wraps
+from os import path
+from sys import exc_info
+
 # IMPLEMENTS TO FUTURE:
 #
 # implementar detección de usuario, en el caso de que ya exista
@@ -29,14 +29,14 @@ from sqlite3 import (
 class DataManagement:
     """
     DataManagement class handles database operations for the CSP tool
-    
+
     Attributes:
         _instance (ClassVar[Any]): Stores the single instance of DataManagement.
         _DB_PATH (ClassVar[str]): The path to the SQLite database file.
         _QUERIES (ClassVar[Dict[str, str]]): A dictionary containing predefinied
         SQL queries.
     """
-    _instance = None
+    _instance: ClassVar[Any] = None
     #_DB_PATH: str = '~/.csp/data.db'
     _DB_PATH: ClassVar[str] = '../test.db'
     _QUERIES: ClassVar[Dict[str, str]] = {
@@ -78,7 +78,7 @@ class DataManagement:
         WHERE id != 1 AND id = ?
     ''',
     'drop_data': '''
-        DELETE FROM login 
+        DELETE FROM login
         WHERE id != 1 and id = ?
     ''',
     'counter_entries': '''
@@ -88,15 +88,15 @@ class DataManagement:
 
     def __new__(cls, masterkey: str = None, *args, **kwargs) -> Self:
         """
-        Implementation of the Singleton pattern for the DataManagement class. 
+        Implementation of the Singleton pattern for the DataManagement class.
         It ensures that only one instance of this class is created during the
-        entire runtime. If an instance already exists, it returns the 
+        entire runtime. If an instance already exists, it returns the
         existing instance. If it does not, it creates a new one.
-        
+
         Args:
             masterkey (str, optional): Master key for database authentication.
             default None.
-            
+
         Returns:
             Self: Instance of the DataManagement class.
         """
@@ -117,7 +117,7 @@ class DataManagement:
         self.conn: Connection = connect(DataManagement._DB_PATH)
         self.cursor: Cursor = self.conn.cursor()
 
-    def handler_err_db(method):
+    def handler_err_db(method: Callable) -> Callable:
         """
         Decorator funtion for handling database errors. This catches any exeptions
         that occur during the execution of the decorated method, prints info about
@@ -126,7 +126,7 @@ class DataManagement:
 
         Args:
             method (Callable): The method to be decorated.
-        
+
         Returns:
             Callable: The decorated method
         """
@@ -160,7 +160,7 @@ class DataManagement:
 
         Args:
             key_query (str): The key of the quey to retrieve.
-            
+           
         Returns:
             str: The SQL query string.
         """
@@ -171,10 +171,10 @@ class DataManagement:
             raise KeyError(msg) from ke
 
     @classmethod
-    def _create_database(cls, masterkey) -> None:
+    def _create_database(cls, masterkey: str) -> None:
         """
         Create the SQLite database if the doesn't exist and set the master key.
-        
+
         Args:
             cls: The class object.
             masterkey (str): The master key to be set for the database.
@@ -187,7 +187,7 @@ class DataManagement:
             cursor.execute(query)
             # check if exists masterkey
             if cls.masterkey_exists(conn):
-                return 
+                return
             # insert masterkey
             query = cls.predefined_sql('set_masterkey')
             cursor.execute(query, (masterkey,))
@@ -197,9 +197,9 @@ class DataManagement:
         finally:
             conn.commit()
             conn.close()
-    
+
     @classmethod
-    def masterkey_exists(cls, conn: Connection=None) -> bool: #Union[bool, OperationalError]:
+    def masterkey_exists(cls, conn: Connection=None) -> bool:
         """
         Checks if the master key exists in the database.
 
@@ -213,7 +213,7 @@ class DataManagement:
             if conn is None:
                 conn: Connection = connect(cls._DB_PATH)
             cursor: Cursor = conn.cursor()
-            query = cls.predefined_sql('counter_entries')
+            query: str = cls.predefined_sql('counter_entries')
             cursor.execute(query)
             if cursor.fetchone() != (0,):
                 return True
@@ -232,7 +232,7 @@ class DataManagement:
 
         Args:
             masterkey (str): The master key to check
-        
+
         Returns:
             bool: True if the master key is correct, False otherwise.
         """
@@ -243,16 +243,16 @@ class DataManagement:
         if not masterkey_db[0] == masterkey:
             return False
         return True
-        
+
     @handler_err_db
     def reset_master_key(self, old_masterkey: str, new_masterkey: str) -> bool:
         """
         Resets the master key to a new value.
-        
+
         Args:
             old_masterkey (str): The current masterkey stored in database.
             new_masterkey (str): The new master key.
-        
+
         Returns:
             bool: True if the master key is reset successfully, False otherwise
         """
@@ -283,7 +283,7 @@ class DataManagement:
             #    print(f'[!] The field: {field} its not valid')
             #    return
             tmp_query: str = DataManagement.predefined_sql('get_specific_data')
-            query = tmp_query.replace('|', field)
+            query: str = tmp_query.replace('|', field)
             self.cursor.execute(query, (data_to_find,))
         else:
             query: str = DataManagement.predefined_sql('get_data')
@@ -300,7 +300,7 @@ class DataManagement:
             password (str): The password for the new entry.
             site (str, optional): The site name associated with the new entry.
             username (str, optional): The username associated with the new entry.
-        
+
         Returns:
             bool: True if the new entry is added successfully, False otherwise.
         """
@@ -317,13 +317,13 @@ class DataManagement:
             field (str): name of field of the table
             data_upd (str): data to update or replace.
             id (int): id of registry
-        
+
         Return:
             bool: True if the new entry is added successfully, False otherwise.
         """
         tmp_query: str = DataManagement.predefined_sql('update_data')
         query: str = tmp_query.replace('|', field)
-        
+
         self.cursor.execute(query, (data_upd, id,))
         return True
 
@@ -341,8 +341,8 @@ class DataManagement:
         query: str = DataManagement.predefined_sql('drop_data')
         self.cursor.execute(query, (id,))
         return True
-    
-    def save_and_exit(self, exit: bool = False):
+
+    def save_and_exit(self, exit: bool=False) -> None:
         """
         Commits changes to the database and closes the connecion.
 
