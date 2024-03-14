@@ -1,7 +1,11 @@
+# str library
 from typing import Union
-from argparse import ArgumentParser, Namespace
+from argparse import ArgumentParser, Namespace, _SubParsersAction
 
+# own libraries
 from modules.Visuals import Visuals
+from modules.Prompt import StartPrompt
+from modules.Interactive import Interactive
 
 def start_args() -> Union[Namespace]:
     """
@@ -21,6 +25,28 @@ def start_args() -> Union[Namespace]:
     parser = ArgumentParser(
         description='Create strong passwords based on a given phrase pattern'
     )
+    # add supparsers to operation mode
+    mode_subparser: _SubParsersAction = parser.add_subparsers(
+        dest='mode', 
+        required='False',
+        help='Starts the selected operational mode'
+    )
+
+    # prompt subparser
+    prompt_parser = mode_subparser.add_parser(
+        'prompt',
+        help='Activate prompt mode for password management',
+    )
+    prompt_parser.set_defaults(prompt=False)
+
+    # interactive subparser
+    interactive_parse = mode_subparser.add_parser(
+        'interactive',
+        help='Activate interactive mode for password management'
+    )
+    interactive_parse.set_defaults(interactive=False)
+
+    # general args
     parser.add_argument(
         '-s', '--separator',
         action='store',
@@ -43,19 +69,10 @@ def start_args() -> Union[Namespace]:
         metavar='',
         help='Specifies the password to be strengthened'
     )
-    parser.add_argument(
-        '-i', '--interactive',
-        action='store_true',
-        default=False,
-        help='Enable interactive password creation'
-    )
     args = parser.parse_args()
-    if not args.interactive and args.password is None:
-        parser.print_help()
-        exit(0)
     return args
 
-def check_and_set_args(args: Namespace, vs: Visuals) -> str:
+def check_and_set_args(args: Namespace) -> str:
     """
     Validate and set command-line arguments related to password creation.
 
@@ -73,7 +90,8 @@ def check_and_set_args(args: Namespace, vs: Visuals) -> str:
         The function then verifies if the entered password is correct. If not, the 
         interactive mode is enabled, and the process repeats.
     """
-    password: str
+    vs: Visuals = Visuals()
+    password: str = ''
     if args.password is not None:
         password = args.password
     while True:
@@ -100,3 +118,26 @@ def check_and_set_args(args: Namespace, vs: Visuals) -> str:
             continue
         break
     return password
+
+def detect_operation_mode(args: Namespace) -> Union[None, bool]:
+    """
+    Analyzes the subparser 'mode' and identifies the operational mode by 
+    executing the corresponding class instance.
+
+    Args:
+        args (Namespace): A Namespace object containing parsed cli arguments
+    
+    Returns:
+        Union (None, bool): Returns none if the mode is identified successfully
+        otherwise returns False.
+    """
+    match args.mode:
+        case 'prompt': 
+            csp_prompt: StartPrompt = StartPrompt()
+        case 'interactive': 
+            interactive: Interactive = Interactive()
+        case _:
+            return False
+        
+def check_one_liner_args(args: Namespace) -> None:
+    pass
