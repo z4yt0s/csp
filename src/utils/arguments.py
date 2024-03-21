@@ -72,6 +72,7 @@ def start_args() -> Union[Namespace]:
     args = parser.parse_args()
     return args
 
+# DEPRECATED
 def check_and_set_args(args: Namespace) -> str:
     """
     Validate and set command-line arguments related to password creation.
@@ -118,26 +119,3 @@ def check_and_set_args(args: Namespace) -> str:
             continue
         break
     return password
-
-def detect_operation_mode(args: Namespace) -> Union[None, bool]:
-    """
-    Analyzes the subparser 'mode' and identifies the operational mode by 
-    executing the corresponding class instance.
-
-    Args:
-        args (Namespace): A Namespace object containing parsed cli arguments
-    
-    Returns:
-        Union (None, bool): Returns none if the mode is identified successfully
-        otherwise returns False.
-    """
-    match args.mode:
-        case 'prompt': 
-            csp_prompt: StartPrompt = StartPrompt()
-        case 'interactive': 
-            interactive: Interactive = Interactive()
-        case _:
-            return False
-        
-def check_one_liner_args(args: Namespace) -> None:
-    pass
