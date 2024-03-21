@@ -1,7 +1,7 @@
 # author: z4yt0s
 # date: 02.29.2024
 # github: https://github.com/z4yt0s/csp
-from typing import ClassVar, Tuple, Union, Literal, List
+from typing import ClassVar, Tuple, Union, Literal, Optional, List
 from time import sleep
 
 from rich.theme import Theme
@@ -18,6 +18,7 @@ class Visuals:
     tool (tables, alignments, colours, banners, etc).
     
     Attributes:
+        COLORS (ClassVar[Dict[str, str]])
         CONSOLE_THEME (ClassVar[Theme]): Set the default theme for the console.
     """
     COLORS: ClassVar[dict[str, str]] = {
@@ -135,6 +136,25 @@ class Visuals:
         self.console.print(table_banner)
         self.console.print(text_footern)
     
+    def print(
+            self, 
+            msg: str,
+            style: Optional[str]=None,
+            type: Optional[Literal['inf', 'war', 'err', 'inp']]=None,
+            end: Optional[str]=None
+    ) -> None:
+        match type:
+            case 'inf':
+                self.console.print(f'[*] {msg}.\n', style='b_blue', end=end)
+            case 'war':
+                self.console.print(f'[?] {msg}.\n', style='b_yellow', end=end)
+            case 'err':
+                self.console.print(f'[!] {msg}.\n', style='b_red', end=end)
+            case 'inp':
+                self.console.print(f'[^] {msg}:', style='b_green', end=end)
+            case _:
+                self.console.print(msg, style=style, end=end)
+
     def render_table_db(
             self,
             proc_data: List[Tuple[Union[str, int, None]]],
