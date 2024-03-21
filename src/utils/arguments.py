@@ -4,8 +4,6 @@ from argparse import ArgumentParser, Namespace, _SubParsersAction
 
 # own libraries
 from modules.Visuals import Visuals
-from modules.Prompt import StartPrompt
-from modules.Interactive import Interactive
 
 def start_args() -> Union[Namespace]:
     """
