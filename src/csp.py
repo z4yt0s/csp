@@ -9,7 +9,7 @@ from sys import exit
 
 from modules.CreateSecurePassword import CreateSecurePasswords
 from modules.Visuals import Visuals
-from modules.StartModes import StartCSP
+from modules.StartCSP import StartCSP
 from utils.arguments import start_args
 
 def main() -> NoReturn:
