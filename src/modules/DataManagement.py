@@ -3,6 +3,7 @@ from typing import (
     Callable,
     ClassVar,
     Tuple,
+    Union,
     Any,
     List,
     Dict
@@ -17,7 +18,6 @@ from sqlite3 import (
 from functools import wraps
 from os import path
 from sys import exc_info
-
 # IMPLEMENTS TO FUTURE:
 #
 # implementar detección de usuario, en el caso de que ya exista
@@ -38,7 +38,7 @@ class DataManagement:
     """
     _instance: ClassVar[Any] = None
     #_DB_PATH: str = '~/.csp/data.db'
-    _DB_PATH: ClassVar[str] = '../test.db'
+    _DB_PATH: ClassVar[str] = './test.db'
     _QUERIES: ClassVar[Dict[str, str]] = {
     'create_tb': '''
         CREATE TABLE IF NOT EXISTS login (
@@ -49,8 +49,8 @@ class DataManagement:
         )
     ''',
     'set_masterkey': '''
-        INSERT INTO login (username, password)
-        VALUES ('masterkey', ?)
+        INSERT INTO login (site, username, password)
+        VALUES ('csp', 'masterkey', ?)
     ''',
     'set_data': '''
         INSERT INTO login (site, username, password)
@@ -102,7 +102,7 @@ class DataManagement:
         """
         if cls._instance is not None:
             return cls._instance
-        cls._create_database(masterkey)
+        cls._create_database()
         cls._instance = super().__new__(cls)
         return cls._instance
 
@@ -171,13 +171,16 @@ class DataManagement:
             raise KeyError(msg) from ke
 
     @classmethod
-    def _create_database(cls, masterkey: str) -> None:
+    def _create_database(cls) -> Union[bool, None]:
         """
         Create the SQLite database if the doesn't exist and set the master key.
 
         Args:
             cls: The class object.
-            masterkey (str): The master key to be set for the database.
+
+        Return: 
+            Union[bool, None]: True if the master key already exists in the 
+            database, None otherwise.
         """
         try:
             conn: Connection = connect(cls._DB_PATH)
@@ -185,13 +188,6 @@ class DataManagement:
             # create table
             query = cls.predefined_sql('create_tb')
             cursor.execute(query)
-            # check if exists masterkey
-            if cls.masterkey_exists(conn):
-                return
-            # insert masterkey
-            query = cls.predefined_sql('set_masterkey')
-            cursor.execute(query, (masterkey,))
-            print('[primera masterkey insertada]')
         except Error as e:
             print(f'[!] SQLite Err: {e}')
         finally:
@@ -342,13 +338,13 @@ class DataManagement:
         self.cursor.execute(query, (id,))
         return True
 
-    def save_and_exit(self, exit: bool=False) -> None:
+    def save_and_exit(self, close_conn: bool=False) -> None:
         """
         Commits changes to the database and closes the connecion.
 
         Args:
-            exit (bool, optional): Indicates whether to exit the tool.
+            close_conn (bool, optional): Indicates whether to exit the tool.
         """
         self.conn.commit()
-        if exit:
+        if close_conn:
             self.conn.close()
