@@ -64,3 +64,36 @@ class CreateSecurePasswords:
                     continue
                 password += char
         return password
+
+    @classmethod
+    def is_strong_password(self, password) -> bool:
+        """
+        Checks that the password argument meets the security requirements:
+        [length >= 8, min one uppercase, lowercase, number and special char]
+
+        Args:
+            password (str): the password string.
+        
+        Return:
+            bool: if all requirements its valids, return True otherwise 
+            return False
+        """
+        req: Dict[str, bool] = {
+            'length': False,
+            'upper': False,
+            'lower': False,
+            'digit': False,
+            'char': False
+        }
+        if len(password) >= 8:
+            req['length'] = True
+        for char in password:
+            if char.isupper():
+                req['upper'] = True
+            elif char.islower():
+                req['lower'] = True
+            elif char.isdigit():
+                req['digit'] = True
+            elif not char.isalnum() and not char.isspace():
+                req['char'] = True
+        return all(success for success in req.values())
