@@ -11,6 +11,12 @@ from modules.Visuals import Visuals
 
 # KEYBINDING FUNCTIONS
 def set_tmp_kb() -> KeyBindings:
+    """
+    Set temporary keybindings for handling control+c and control+l events.
+
+    Returns:
+        KeyBindings: The configured keybindings.
+    """
     tmp_kb: KeyBindings = KeyBindings()
     # ctrl + c
     @tmp_kb.add(Keys.ControlC)
@@ -23,6 +29,12 @@ def set_tmp_kb() -> KeyBindings:
     return tmp_kb
 
 def set_csp_kb() -> KeyBindings:
+    """
+    Set keybindings specific to the CSP application for control+c and control+d events.
+
+    Returns:
+        KeyBindings: The configured keybindings.
+    """
     csp_kb: KeyBindings = KeyBindings()
     # ctrl + c
     @csp_kb.add(Keys.ControlC)
@@ -40,6 +52,12 @@ def set_csp_kb() -> KeyBindings:
 
 # COMPLETER FUNCTIONS
 def set_completer() -> NestedCompleter:
+    """
+    Set the completer for CSP application commands.
+
+    Returns:
+        NestedCompleter: The configured completer.
+    """
     CSP_COMPLETER: Dict[str, Dict[str, None]] = {
         'list': {
             'id': None,
@@ -72,6 +90,9 @@ def set_completer() -> NestedCompleter:
 
 # PRINTER FUNTIONS
 def welcome_msg() -> None:
+    """
+    Display the welcome message and requirements for the CSP application.
+    """
     vs: Visuals = Visuals()
     welcome: str = 'The first time cps is run, a master key must be created'
     func_masterkey0: str = 'The master key will be used to encrypt passwords'
