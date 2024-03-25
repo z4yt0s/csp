@@ -14,7 +14,8 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.cursor_shapes import CursorShape
-from prompt_toolkit.application import get_app
+from prompt_toolkit.clipboard import Clipboard
+from pyperclip import copy
 # from prompt_toolkit.key_binding.bindings.named_commands import clear_screen
 
 # own libraries
@@ -265,6 +266,33 @@ class StartCSP:
                 type='inf'
             )
 
+    def _reforcepass(self, args: List[str]) -> None:
+        """
+        Reinforces a given password by generating a stronger password using
+        CreateSecurePasswords class.
+
+        Args:
+            args (List[str]): List containing the original password and a
+            separator.
+
+        Returns:
+            None: This method does not return any value.
+        """
+        password: str = args[0]
+        separator: str = args[1]
+        csp: CreateSecurePasswords = CreateSecurePasswords(
+            password=password,
+            separator=separator
+        )
+        reforce_pass: str = csp.create_strong_pass()
+        self.vs.print('Password reforce succesfull', type='inf')
+        if not csp.is_strong_password(reforce_pass):
+            msg0: str = 'The generated password does not meet security '
+            msg1: str = 'requirements. Use it at your own risk'
+            self.vs.print(f'{msg0}{msg1}', type='war')
+        self.vs.print(f'{reforce_pass} -> copied to clipboard', type='proc')
+        copy(reforce_pass)
+
     # posibly decorator in a future
     def _check_exists_id(self, id: str) -> bool:
         """
@@ -336,6 +364,8 @@ class PromptCSP(StartCSP):
                 self._delete(args)
             case 'upd':
                 self._update(args)
+            case 'reforcepass':
+                self._reforcepass(args)
             case 'help':
                 self._help(args)
             case 'exit':
