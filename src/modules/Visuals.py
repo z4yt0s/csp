@@ -92,28 +92,28 @@ class Visuals:
         text_footern: Text = Text()
 
         name: List[str] = [
-            '                               \n'
-            '  /$$$$$$$  /$$$$$$$  /$$$$$$  \n',
-            ' /$$_____/ /$$_____/ /$$__  $$ \n',
+            '\n'
+            '  /$$$$$$$  /$$$$$$$  /$$$$$$\n',
+            ' /$$_____/ /$$_____/ /$$__  $$\n',
             '| $$      |  $$$$$$ | $$  \\ $$\n',
             '| $$       \\____  $$| $$  | $$\n',
-            '|  $$$$$$$ /$$$$$$$/| $$$$$$$/ \n',
-            ' \\_______/|_______/ | $$____/ \n',
-            '                    | $$       \n',
-            '                    | $$       \n',
-            '                    |__/       \n'
+            '|  $$$$$$$ /$$$$$$$/| $$$$$$$/\n',
+            ' \\_______/|_______/ | $$____/\n',
+            '                    | $$\n',
+            '                    | $$\n',
+            '                    |__/\n'
         ]
         logo: List[str] = [
-            '                  \n'
-            '    .-""-.        \n',
-            '   / .--. \\      \n',
-            '  | |    | |      \n',
-            '  | |.-""-.|      \n',
-            ' ///`.::::.`\\    \n',
-            '||| ::/  \\:: ;   \n',
-            '||| ::\\__/:: ;   \n',
+            '\n'
+            '    .-""-.\n',
+            '   / .--. \\\n',
+            '  | |    | |\n',
+            '  | |.-""-.|\n',
+            ' ///`.::::.`\\\n',
+            '||| ::/  \\:: ;\n',
+            '||| ::\\__/:: ;\n',
             ' \\\\\\ \'::::\' /\n',
-            '  `=\'--..-\'`    \n'
+            '  `=\'--..-\'`\n'
         ]
         footern: List[str] = [
             '===============================================\n',
@@ -137,23 +137,46 @@ class Visuals:
         self.console.print(text_footern)
     
     def print(
-            self, 
-            msg: str,
-            style: Optional[str]=None,
-            type: Optional[Literal['inf', 'war', 'err', 'inp']]=None,
-            end: Optional[str]=None
+        self, 
+        msg: Union[str, List[str]],
+        bad_render: Optional[bool]=False,
+        style: Optional[str]=None,
+        type: Optional[Literal['inf', 'war', 'err', 'inp', 'list']]=None,
+        end: Optional[str]=None,
     ) -> None:
+        if bad_render: 
+            self.special_print()
+            return None
+
         match type:
             case 'inf':
-                self.console.print(f'[*] {msg}.\n', style='b_blue', end=end)
+                self.console.print(f'[*] {msg}.\n', style='blue', end=end)
             case 'war':
-                self.console.print(f'[?] {msg}.\n', style='b_yellow', end=end)
+                self.console.print(f'[?] {msg}.\n', style='yellow', end=end)
             case 'err':
-                self.console.print(f'[!] {msg}.\n', style='b_red', end=end)
+                self.console.print(f'[!] {msg}.\n', style='red', end=end)
             case 'inp':
-                self.console.print(f'[^] {msg}:', style='b_green', end=end)
+                self.console.print(f'[^] {msg}:', style='green', end=end)
+            case 'list':
+                if not isinstance(msg, list):
+                    self.print('Can\'t create list if msg not is array')
+                    return None
+                for content in msg:
+                    self.console.print(f'\t[-] {content}', style='pink')
+                self.console.print()
             case _:
                 self.console.print(msg, style=style, end=end)
+    
+    def special_print(
+        self, 
+        msg: str,
+        bad_render: Optional[bool]=False,
+        style: Optional[str]=None,
+        type: Optional[Literal['inf', 'war', 'err', 'inp']]=None,
+        end: Optional[str]=None
+    ) -> None:
+        # TERMINAR MAS TARDE Y TAL
+        pass
 
     def render_table_db(
             self,
