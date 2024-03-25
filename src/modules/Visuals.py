@@ -141,7 +141,14 @@ class Visuals:
         msg: Union[str, List[str]],
         bad_render: Optional[bool]=False,
         style: Optional[str]=None,
-        type: Optional[Literal['inf', 'war', 'err', 'inp', 'list']]=None,
+        type: Optional[Literal[
+            'inf', 
+            'war',
+            'err',
+            'inp',
+            'list',
+            'proc'
+        ]]=None,
         end: Optional[str]=None,
     ) -> None:
         if bad_render: 
@@ -157,6 +164,8 @@ class Visuals:
                 self.console.print(f'[!] {msg}.\n', style='red', end=end)
             case 'inp':
                 self.console.print(f'[^] {msg}:', style='green', end=end)
+            case 'proc':
+                self.console.print(f'[+] {msg}.\n', style='purple', end=end)
             case 'list':
                 if not isinstance(msg, list):
                     self.print('Can\'t create list if msg not is array')
