@@ -146,13 +146,13 @@ class Visuals:
             'war',
             'err',
             'inp',
-            'list',
-            'proc'
+            'proc',
+            'list'
         ]]=None,
         end: Optional[str]=None,
     ) -> None:
         if bad_render: 
-            self.special_print()
+            self.special_print(msg=msg, style=style, type=type, end=end)
             return None
 
         match type:
@@ -165,7 +165,7 @@ class Visuals:
             case 'inp':
                 self.console.print(f'[^] {msg}:', style='green', end=end)
             case 'proc':
-                self.console.print(f'[+] {msg}.\n', style='purple', end=end)
+                self.console.print(f'[+] {msg}.\n', end=end)
             case 'list':
                 if not isinstance(msg, list):
                     self.print('Can\'t create list if msg not is array')
@@ -181,11 +181,44 @@ class Visuals:
         msg: str,
         bad_render: Optional[bool]=False,
         style: Optional[str]=None,
-        type: Optional[Literal['inf', 'war', 'err', 'inp']]=None,
+        type: Optional[Literal[
+            'inf',
+            'war',
+            'err',
+            'inp',
+            'proc',
+            'list'
+        ]]=None,
         end: Optional[str]=None
     ) -> None:
-        # TERMINAR MAS TARDE Y TAL
-        pass
+        if type == 'inf':
+            blue: str = Visuals.COLORS['blue']
+            self.console.print(f'[{blue}][*] {msg}.[/{blue}]\n', end=end)
+
+        if type == 'war':
+            yellow: str = Visuals.COLORS['yellow']
+            self.console.print(f'[{yellow}][?] {msg}.[/{yellow}]\n', end=end)
+
+        if type == 'err':
+            red: str = Visuals.COLORS['red']
+            self.console.print(f'[{red}][!] {msg}.[/{red}]\n', end=end)
+
+        if type == 'inp':
+            green: str = Visuals.COLORS['green']
+            self.console.print(f'[{green}][^] {msg}.[/{green}\n', end=end)
+
+        if type == 'proc':
+            purple: str = Visuals.COLORS['b_purple']
+            self.console.print(f'[{purple}][+] {msg}.[/{purple}]\n', end=end)
+
+        if type == 'list':
+            pink: str = Visuals.COLORS['pink']
+            if not isinstance(msg, list):
+                self.print('Can\'t create list if msg not is array')
+                return None
+            for content in msg:
+                self.console.print(f'\t[{purple}[-] {content}[/{purple}]')
+            self.console.print()
 
     def render_table_db(
             self,
