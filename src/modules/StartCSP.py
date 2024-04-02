@@ -122,7 +122,8 @@ class StartCSP:
                 self.vs.print(
                     f'Incorrect masterkey. Attempts remaining: {attempts}',
                     type='err',
-                    end='\n'
+                    end='\n',
+                    bad_render=True
                 )
             except KeyboardInterrupt: continue
             except EOFError: self._exit_csp()
@@ -290,7 +291,11 @@ class StartCSP:
             msg0: str = 'The generated password does not meet security '
             msg1: str = 'requirements. Use it at your own risk'
             self.vs.print(f'{msg0}{msg1}', type='war')
-        self.vs.print(f'{reforce_pass} -> copied to clipboard', type='proc')
+        self.vs.print(
+            f'{reforce_pass} -> copied to clipboard',
+            type='proc',
+            bad_render=True
+        )
         copy(reforce_pass)
 
     # posibly decorator in a future
