@@ -18,6 +18,9 @@ from sqlite3 import (
 from functools import wraps
 from os import path
 from sys import exc_info
+
+from modules.Crypto import Hasher
+
 # IMPLEMENTS TO FUTURE:
 #
 # implementar detección de usuario, en el caso de que ya exista
@@ -234,9 +237,9 @@ class DataManagement:
         """
         query: str = DataManagement.predefined_sql('get_masterkey')
         cursor: Cursor = self.cursor.execute(query)
-        masterkey_db: str = cursor.fetchone()
-        # in future implement decript masterkey
-        if not masterkey_db[0] == masterkey:
+        masterkey_db: Tuple[str] = cursor.fetchone()
+        hash_type = Hasher.identify_hash_type(masterkey_db[0])
+        if not masterkey_db[0] == hash_type.encrypt(masterkey):
             return False
         return True
 
