@@ -20,7 +20,7 @@ def start_args() -> Union[Namespace]:
         creation. If the interactive mode is not enabled and no password is 
         provided, the help message is printed, and the program exits.
     """
-    parser = ArgumentParser(
+    parser: ArgumentParser = ArgumentParser(
         description='Create strong passwords based on a given phrase pattern'
     )
     # add supparsers to operation mode
@@ -31,21 +31,66 @@ def start_args() -> Union[Namespace]:
     )
 
     # prompt subparser
-    prompt_parser = mode_subparser.add_parser(
+    prompt_parser: _SubParsersAction = mode_subparser.add_parser(
         'prompt',
         help='Activate prompt mode for password management',
     )
     prompt_parser.set_defaults(prompt=False)
 
     # interactive subparser
-    interactive_parse = mode_subparser.add_parser(
+    interactive_parser: _SubParsersAction = mode_subparser.add_parser(
         'interactive',
         help='Activate interactive mode for password management'
     )
-    interactive_parse.set_defaults(interactive=False)
+    interactive_parser.set_defaults(interactive=False)
+    
+    oneliner_parser: _SubParsersAction = mode_subparser.add_parser(
+        'oneliner', 
+        help='Activate oneliner mode for password management'
+        #allow_abbrev=''
+    )
+    oneliner_parser.set_defaults(oneliner=False)
 
     # general args
-    parser.add_argument(
+    oneliner_parser.add_argument(
+        '-a', '--add',
+        action='store',
+        type=str,
+        metavar='',
+        default=None,
+        help='Adds a new record in the database'
+    )
+    oneliner_parser.add_argument(
+        '-u', '--update',
+        action='store',
+        type=str,
+        metavar='',
+        default=None,
+        help='Update the data in the database'
+    )
+    oneliner_parser.add_argument(
+        '-d', '--delete',
+        action='store',
+        type=str,
+        metavar='',
+        default=None,
+        help='Remove the data in the database'
+    )
+    oneliner_parser.add_argument(
+        '-l', '--list',
+        action='store',
+        type=str,
+        metavar='',
+        default=None,
+        help='Lists the fields in the database'
+    )
+    oneliner_parser.add_argument(
+        '-cm', '--change-masterkey',
+        action='store_true',
+        default=False,
+        help='Change the CSP masterkey'
+    )
+    oneliner_parser.add_argument(
         '-s', '--separator',
         action='store',
         type=str,
@@ -53,14 +98,14 @@ def start_args() -> Union[Namespace]:
         default=' ',
         help='Specify the character used as a separator between words [default: space]'
     )
-    parser.add_argument(
+    oneliner_parser.add_argument(
         '-sc', '--specialchar',
         choices=['begin', 'between', 'end'],
         action='store',
         metavar='',
         help='Adds random special characters to the password'
     )
-    parser.add_argument(
+    oneliner_parser.add_argument(
         '-p', '--password',
         type=str,
         action='store',

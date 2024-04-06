@@ -22,6 +22,7 @@ from pyperclip import copy
 from modules.DataManagement import DataManagement
 from modules.Visuals import Visuals
 from modules.CreateSecurePassword import CreateSecurePasswords # change
+from modules.Crypto import Hasher
 from utils.prompt_config import (
     set_tmp_kb,
     set_csp_kb,
@@ -96,8 +97,9 @@ class StartCSP:
                 break
             except KeyboardInterrupt: self._exit_csp()
             except EOFError: self._exit_csp()
+        hashed_masterkey: str = Hasher.create_random_hash(masterkey0)        
         query: str = self.data_mgmt.predefined_sql('set_masterkey')
-        self.data_mgmt.cursor.execute(query, (masterkey0,))
+        self.data_mgmt.cursor.execute(query, (hashed_masterkey,))
         self.vs.print('Masterkey inserted correctly', type='inf', end='\n')
     
     def _check_credentials(self):
@@ -133,7 +135,7 @@ class StartCSP:
     def detect_mode(
             self,
             args: Namespace
-    ) -> Union['PromptCSP', 'InteractiveCSP', 'OneLinerCPS']:
+    ) -> Union['PromptCSP', 'InteractiveCSP', 'OneLinerCSP']:
         """
         Detects the mode specified in the arguments and returns an instance
         of the corresponding class.
@@ -142,13 +144,13 @@ class StartCSP:
             args (Namespace): The arguments passed to the method.
 
         Returns:
-            Union[PromptCSP, InteractiveCSP, OneLinerCPS]: An instance of the
+            Union[PromptCSP, InteractiveCSP, OneLinerCSP]: An instance of the
             class corresponding to the detected mode.
         """
         match args.mode:
             case 'prompt': return PromptCSP()
             case 'interactive': return InteractiveCSP()
-            case _: return OneLinerCPS(args)
+            case _: return OneLinerCSP(args)
     
     def _list(self, args: List[str]) -> None:
         """
@@ -222,7 +224,7 @@ class StartCSP:
                 type='inf'
             )
 
-    def _delete(self, args: str) -> None:
+    def _delete(self, args: List[str]) -> None:
         """
         Delete data from the database based on the provided id. If the provided
         id not exists end the method, printing a error message.
@@ -233,14 +235,14 @@ class StartCSP:
         Return:
             None: print a message if exec was success or not.
         """
-        id: str = args[0]
-        if not self._check_exists_id(id):
-            return None
-        if self.data_mgmt.delete_data(id):
-            self.vs.print(
-                'Data Deleted Correctly',
-                type='inf'
-            )
+        for id in args:
+            if not self._check_exists_id(id):
+                return None
+            if self.data_mgmt.delete_data(id):
+                self.vs.print(
+                    'Data Deleted Correctly',
+                    type='inf'
+                )
 
     def _update(self, args: List[str]) -> None:
         """
@@ -314,8 +316,9 @@ class StartCSP:
         if len(id_data) != 0:
             return True
         self.vs.print(
-            f'The id: {id} does not exist, and therefore cannot be remove',
-            type='err'
+            f'The id: {id} does not exist, therefore the action cannot be executed',
+            type='err',
+            bad_render=True
         )
         return False
 
@@ -331,9 +334,37 @@ class StartCSP:
         self.data_mgmt.save_and_exit(True)
         self.vs.print('Exiting..', type='err')
         exit(0)
+    
+    def _proc_instruction(self, instruction: Union[str, bool]) -> Tuple[str, List[str]]:
+        def _identify_subclass_call() -> str:
+            chars_to_replace: List[str] = [
+                "'",
+                '<',
+                '>',
+                'class'
+            ]
+            son_class: str = str(type(self))
+            for char in chars_to_replace:
+                son_class = son_class.replace(char, '').strip()
+            return son_class.split('.')[-1]
+    
+        # Proc true options ('change masterkey')
+        if type(instruction).__name__ == 'bool':
+            return instruction
+        
+        son_class: str = _identify_subclass_call()
+        if son_class == 'PromptCSP':
+            command, *args = instruction.strip().split(' ')
+            args = list(filter(lambda arg: arg != '', args))
+            return (command, args)
+
+        if son_class == 'OneLinerCSP':
+            args = instruction.strip().split(' ')
+            args = list(filter(lambda arg: arg != '', args))
+            print(f'{args} -> OneLiner')
+            return args
 
 class PromptCSP(StartCSP):
-
     def __init__(self) -> None:
         super().__init__()
         self.csp_session: PromptSession = PromptSession(
@@ -352,11 +383,6 @@ class PromptCSP(StartCSP):
                 self._check_command(instruction)
             except KeyboardInterrupt:
                 self._check_command('^C')
-
-    def _proc_instruction(self, instruction: str) -> Tuple[str, List[str]]:
-        command, *args = instruction.strip().split(' ')
-        args = list(filter(lambda arg: arg != '', args))
-        return (command, args)
 
     def _check_command(self, instruction: str) -> None:
         command, args = self._proc_instruction(instruction)
@@ -391,10 +417,26 @@ class InteractiveCSP(StartCSP):
     def start_mode(self):
         pass
 
-class OneLinerCPS(StartCSP):
+class OneLinerCSP(StartCSP):
     def __init__(self, args: Namespace) -> None:
         super().__init__()
         self.args = args
     
     def start_mode(self):
-        pass
+        for argument, args in self.args.__dict__.items():
+            print(f'{argument} -> {args} -> {type(args)}')
+            if args is None: continue
+            proc_args: Union[List[str], bool] = self._proc_instruction(args)
+            match argument:
+                case 'change_masterkey': 
+                    if not proc_args: continue 
+                    print('Cambiar masterkey en un futuro implementar')
+
+                case 'execute':
+                    tmp_prompt: PromptCSP = PromptCSP()
+                    tmp_prompt._check_command(self.args.execute)
+
+                case 'add': self._add(proc_args)
+                case 'update': self._update(proc_args)
+                case 'delete': self._delete(proc_args)
+                case 'list': self._list(proc_args)

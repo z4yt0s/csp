@@ -36,5 +36,6 @@ class _Blake2(Hasher):
     def encrypt(self, data: str) -> str:
         return f'{blake2b(data.encode()).hexdigest()}{self._IDS[2]}'
 
+
 class PassCrypt:
     pass
