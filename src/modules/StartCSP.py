@@ -227,7 +227,7 @@ class StartCSP:
         else:
             password = args
         crypt_raw_pass: Tuple[str] = StartCSP._passcrypt.encrypt(password)
-        password = f'{crypt_raw_pass[0]}{crypt_raw_pass[1]}{crypt_raw_pass[2]}'
+        password = f'{crypt_raw_pass[0]}|{crypt_raw_pass[1]}|{crypt_raw_pass[2]}'
         if self.data_mgmt.new_entry(password, site, username):
             self.vs.print(
                 f'Data inserted correcly', 
@@ -275,7 +275,7 @@ class StartCSP:
             return None
         if field == 'password':
             crypt_data_upd: Tuple[str] = StartCSP._passcrypt.encrypt(data_upd)
-            data_upd: str = f'{crypt_data_upd[0]}{crypt_data_upd[1]}{crypt_data_upd[3]}'
+            data_upd: str = f'{crypt_data_upd[0]}|{crypt_data_upd[1]}|{crypt_data_upd[3]}'
         if self.data_mgmt.update_data(field, data_upd, id):
             self.vs.print(
                 'Data Updated Correctly',
