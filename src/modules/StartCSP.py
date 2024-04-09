@@ -5,7 +5,8 @@ from typing import (
     Union,
     Dict,
     List,
-    NoReturn, 
+    NoReturn,
+    Any
 )
 from argparse import Namespace
 
@@ -22,7 +23,7 @@ from pyperclip import copy
 from modules.DataManagement import DataManagement
 from modules.Visuals import Visuals
 from modules.CreateSecurePassword import CreateSecurePasswords # change
-from modules.Crypto import Hasher
+from modules.Crypt import Hasher, PassCrypt
 from utils.prompt_config import (
     set_tmp_kb,
     set_csp_kb,
@@ -46,7 +47,8 @@ class StartCSP:
     AUTH_QUESTION: ClassVar[List[Tuple[str, str]]] = [
         ('class:msg', '[^] Enter the masterkey: ')
     ]
-    _authenticated = False
+    _authenticated: ClassVar[bool] = False
+    _passcrypt: ClassVar[Any]
 
     def __init__(self) -> None:
         self.vs: Visuals = Visuals()
@@ -118,6 +120,7 @@ class StartCSP:
                 self.vs.print('Login CSP', type='inf')
                 masterkey: str = self.tmp_session.prompt()
                 if self.data_mgmt.check_master_key(masterkey):
+                    StartCSP._passcrypt = PassCrypt(masterkey)
                     del masterkey
                     return True
                 attempts -= 1
@@ -168,7 +171,8 @@ class StartCSP:
         if len(args) != 0:
             raw_data = self._list_specific(args[:2])
             return None
-        raw_data = self.data_mgmt.list_data()
+        crypt_raw_data: List[Tuple[Union[int, str]]] = self.data_mgmt.list_data()
+        raw_data = self._decrypt_listed_data(crypt_raw_data)
         self.vs.render_table_db(raw_data)
 
     def _list_specific(self, args: List[str]) -> None:
@@ -187,7 +191,11 @@ class StartCSP:
             None: Displays the queried data.
         """
         field, data_to_find = args
-        raw_data = self.data_mgmt.list_data(field, data_to_find)
+        crypt_raw_data: List[Tuple[Union[int, str]]] = self.data_mgmt.list_data(
+            field,
+            data_to_find
+        )
+        raw_data = self._decrypt_listed_data(crypt_raw_data)
         if len(raw_data) == 0:
             self.vs.print(
                 'The requested value was not found in the database',
@@ -218,6 +226,8 @@ class StartCSP:
             username, password = args
         else:
             password = args
+        crypt_raw_pass: Tuple[str] = StartCSP._passcrypt.encrypt(password)
+        password = f'{crypt_raw_pass[0]}{crypt_raw_pass[1]}{crypt_raw_pass[2]}'
         if self.data_mgmt.new_entry(password, site, username):
             self.vs.print(
                 f'Data inserted correcly', 
@@ -263,6 +273,9 @@ class StartCSP:
         id: int = args[2]
         if not self._check_exists_id(id):
             return None
+        if field == 'password':
+            crypt_data_upd: Tuple[str] = StartCSP._passcrypt.encrypt(data_upd)
+            data_upd: str = f'{crypt_data_upd[0]}{crypt_data_upd[1]}{crypt_data_upd[3]}'
         if self.data_mgmt.update_data(field, data_upd, id):
             self.vs.print(
                 'Data Updated Correctly',
@@ -363,6 +376,16 @@ class StartCSP:
             args = list(filter(lambda arg: arg != '', args))
             print(f'{args} -> OneLiner')
             return args
+    
+    def _decrypt_listed_data(self, crypt_raw_data) -> List[str]:
+        decrypted_passwords = [
+            StartCSP._passcrypt.decrypt(tuple(fields[3].split('|')))
+            for fields in crypt_raw_data
+        ]
+        return [
+            list(fields[:3]) + [password]
+            for fields, password in zip(crypt_raw_data, decrypted_passwords)
+        ]
 
 class PromptCSP(StartCSP):
     def __init__(self) -> None:

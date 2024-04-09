@@ -19,7 +19,7 @@ from functools import wraps
 from os import path
 from sys import exc_info
 
-from modules.Crypto import Hasher
+from modules.Crypt import Hasher
 
 # IMPLEMENTS TO FUTURE:
 #
@@ -220,7 +220,6 @@ class DataManagement:
         except OperationalError as oe:
             print(f'[!] {oe.__class__.__name__}: {oe}')
             return False
-            #return oe
 
     # in future store masterkey in cache so as not to query the db
     @handler_err_db
