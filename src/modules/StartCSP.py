@@ -293,7 +293,7 @@ class StartCSP:
             return None
         if field == 'password':
             crypt_data_upd: Tuple[str] = StartCSP._passcrypt.encrypt(data_upd)
-            data_upd: str = f'{crypt_data_upd[0]}|{crypt_data_upd[1]}|{crypt_data_upd[3]}'
+            data_upd: str = f'{crypt_data_upd[0]}|{crypt_data_upd[1]}|{crypt_data_upd[2]}'
         if self.data_mgmt.update_data(field, data_upd, id):
             self.vs.print(
                 'Data Updated Correctly',
