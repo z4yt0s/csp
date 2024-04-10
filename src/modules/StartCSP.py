@@ -137,10 +137,7 @@ class StartCSP:
         self.vs.print(f'It has exceeded attempts', type='err')
         return False
     
-    def detect_mode(
-            self,
-            args: Namespace
-    ) -> Union['PromptCSP', 'InteractiveCSP', 'OneLinerCSP']:
+    def detect_mode( self, args: Namespace) -> Union['PromptCSP', 'OneLinerCSP']:
         """
         Detects the mode specified in the arguments and returns an instance
         of the corresponding class.
@@ -154,8 +151,7 @@ class StartCSP:
         """
         match args.mode:
             case 'prompt': return PromptCSP()
-            case 'interactive': return InteractiveCSP()
-            case _: return OneLinerCSP(args)
+            case 'oneliner': return OneLinerCSP(args)
 
     def _list(self, args: List[str]) -> None:
         """
@@ -454,13 +450,6 @@ class PromptCSP(StartCSP):
         # in future
         pass
     
-class InteractiveCSP(StartCSP):
-    def __init__(self) -> None:
-        super().__init__()
-    
-    def start_mode(self):
-        pass
-
 class OneLinerCSP(StartCSP):
     def __init__(self, args: Namespace) -> None:
         super().__init__()

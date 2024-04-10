@@ -37,13 +37,6 @@ def start_args() -> Union[Namespace]:
     )
     prompt_parser.set_defaults(prompt=False)
 
-    # interactive subparser
-    interactive_parser: _SubParsersAction = mode_subparser.add_parser(
-        'interactive',
-        help='Activate interactive mode for password management'
-    )
-    interactive_parser.set_defaults(interactive=False)
-    
     oneliner_parser: _SubParsersAction = mode_subparser.add_parser(
         'oneliner', 
         help='Activate oneliner mode for password management'
