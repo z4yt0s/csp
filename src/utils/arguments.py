@@ -55,6 +55,7 @@ def start_args() -> Union[Namespace]:
     oneliner_parser.add_argument(
         '-a', '--add',
         action='store',
+        nargs='+',
         type=str,
         metavar='',
         default=None,
@@ -63,6 +64,7 @@ def start_args() -> Union[Namespace]:
     oneliner_parser.add_argument(
         '-u', '--update',
         action='store',
+        nargs='+',
         type=str,
         metavar='',
         default=None,
@@ -71,6 +73,7 @@ def start_args() -> Union[Namespace]:
     oneliner_parser.add_argument(
         '-d', '--delete',
         action='store',
+        nargs='+',
         type=str,
         metavar='',
         default=None,
@@ -79,6 +82,7 @@ def start_args() -> Union[Namespace]:
     oneliner_parser.add_argument(
         '-l', '--list',
         action='store',
+        nargs='+',
         type=str,
         metavar='',
         default=None,
