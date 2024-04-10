@@ -6,9 +6,11 @@ from typing import (
     Dict,
     List,
     NoReturn,
+    Callable,
     Any
 )
 from argparse import Namespace
+from functools import wraps
 
 # third-party libraries
 from prompt_toolkit import PromptSession
@@ -154,7 +156,7 @@ class StartCSP:
             case 'prompt': return PromptCSP()
             case 'interactive': return InteractiveCSP()
             case _: return OneLinerCSP(args)
-    
+
     def _list(self, args: List[str]) -> None:
         """
         Detect if the user wants to list the entire database or if he wants
@@ -190,7 +192,20 @@ class StartCSP:
         Return:
             None: Displays the queried data.
         """
-        field, data_to_find = args
+        try: 
+            field, data_to_find = args 
+        except ValueError as ve: 
+            self.vs.print(
+                f'The atributes specify are wrong -> {ve}',
+                type='err',
+                bad_render=True
+            )
+            self.vs.print(
+                'Try: [CSP> help] to see the help menu',
+                type='war'
+            )
+            return None
+                    
         crypt_raw_data: List[Tuple[Union[int, str]]] = self.data_mgmt.list_data(
             field,
             data_to_find
@@ -217,15 +232,12 @@ class StartCSP:
             None. Prints a message indicating whether the data was added 
             successfully
         """
-        site: str = None
-        username: str = None
-        password: str = None
         if len(args) == 3:
             site, username, password = args
         elif len(args) == 2:
             username, password = args
         else:
-            password = args
+            password = args[0]
         crypt_raw_pass: Tuple[str] = StartCSP._passcrypt.encrypt(password)
         password = f'{crypt_raw_pass[0]}|{crypt_raw_pass[1]}|{crypt_raw_pass[2]}'
         if self.data_mgmt.new_entry(password, site, username):
@@ -268,9 +280,19 @@ class StartCSP:
         Return:
             None: This method does not return any type.
         """
-        field: str = args[0]
-        data_upd: str = args[1]
-        id: int = args[2]
+        try:
+            field, data_upd, id = args
+        except ValueError as ve: 
+            self.vs.print(
+                f'The atributes specify are wrong -> {ve}',
+                type='err',
+                bad_render=True
+            )
+            self.vs.print(
+                'Try: [CSP> help] to see the help menu',
+                type='war'
+            )
+            return None
         if not self._check_exists_id(id):
             return None
         if field == 'password':
@@ -294,8 +316,14 @@ class StartCSP:
         Returns:
             None: This method does not return any value.
         """
-        password: str = args[0]
-        separator: str = args[1]
+        if len(args) > 2:
+            #*password, separator = args
+            password = args
+            separator = ' '
+            password: str = separator.join(password)
+        else:
+            password: str = args[0]
+            separator: str = args[1]
         csp: CreateSecurePasswords = CreateSecurePasswords(
             password=password,
             separator=separator
@@ -348,35 +376,28 @@ class StartCSP:
         self.vs.print('Exiting..', type='err')
         exit(0)
     
-    def _proc_instruction(self, instruction: Union[str, bool]) -> Tuple[str, List[str]]:
-        def _identify_subclass_call() -> str:
-            chars_to_replace: List[str] = [
-                "'",
-                '<',
-                '>',
-                'class'
-            ]
-            son_class: str = str(type(self))
-            for char in chars_to_replace:
-                son_class = son_class.replace(char, '').strip()
-            return son_class.split('.')[-1]
-    
+    def _proc_instruction(
+        self,
+        instruction: Union[str, bool]
+    ) -> Union[Tuple[str, List[str]], List[str]]:
         # Proc true options ('change masterkey')
         if type(instruction).__name__ == 'bool':
             return instruction
         
-        son_class: str = _identify_subclass_call()
+        son_class: str = type(self).__name__
         if son_class == 'PromptCSP':
             command, *args = instruction.strip().split(' ')
             args = list(filter(lambda arg: arg != '', args))
             return (command, args)
 
         if son_class == 'OneLinerCSP':
-            args = instruction.strip().split(' ')
+            args = [
+                word for proc_args in instruction
+                for word in proc_args.strip().split(' ')
+            ]
             args = list(filter(lambda arg: arg != '', args))
-            print(f'{args} -> OneLiner')
             return args
-    
+
     def _decrypt_listed_data(self, crypt_raw_data) -> List[str]:
         decrypted_passwords = [
             StartCSP._passcrypt.decrypt(tuple(fields[3].split('|')))
@@ -443,11 +464,12 @@ class InteractiveCSP(StartCSP):
 class OneLinerCSP(StartCSP):
     def __init__(self, args: Namespace) -> None:
         super().__init__()
+        print()
         self.args = args
     
     def start_mode(self):
         for argument, args in self.args.__dict__.items():
-            print(f'{argument} -> {args} -> {type(args)}')
+            #print(f'{argument} -> {args} -> {type(args)}')
             if args is None: continue
             proc_args: Union[List[str], bool] = self._proc_instruction(args)
             match argument:
