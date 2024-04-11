@@ -26,6 +26,10 @@ def set_tmp_kb() -> KeyBindings:
     @tmp_kb.add(Keys.ControlL)
     def stop_current_exec(event):
         raise KeyboardInterrupt
+    # ctrl + d
+    @tmp_kb.add(Keys.ControlD)
+    def stop_execution(event):
+        raise KeyboardInterrupt('ControlD')
     return tmp_kb
 
 def set_csp_kb() -> KeyBindings:
