@@ -46,6 +46,12 @@ def start_args() -> Union[Namespace]:
 
     # general args
     oneliner_parser.add_argument(
+        '-cm', '--change-masterkey',
+        action='store_true',
+        default=False,
+        help='Change the CSP masterkey'
+    )
+    oneliner_parser.add_argument(
         '-a', '--add',
         action='store',
         nargs='+',
@@ -80,12 +86,6 @@ def start_args() -> Union[Namespace]:
         metavar='',
         default=None,
         help='Lists the fields in the database'
-    )
-    oneliner_parser.add_argument(
-        '-cm', '--change-masterkey',
-        action='store_true',
-        default=False,
-        help='Change the CSP masterkey'
     )
     oneliner_parser.add_argument(
         '-s', '--separator',
