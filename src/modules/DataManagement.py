@@ -6,7 +6,8 @@ from typing import (
     Union,
     Any,
     List,
-    Dict
+    Dict,
+    Literal
 )
 from sqlite3 import (
     connect,
@@ -243,22 +244,25 @@ class DataManagement:
         return True
 
     @handler_err_db
-    def reset_master_key(self, old_masterkey: str, new_masterkey: str) -> bool:
+    def re_or_set_masterkey(
+        self,
+        masterkey: str,
+        mode: Literal['set', 'reset']='set'
+    ) -> None:
         """
-        Resets the master key to a new value.
+        Resets the value of masterkey or set the masterkey.
 
         Args:
-            old_masterkey (str): The current masterkey stored in database.
-            new_masterkey (str): The new master key.
-
-        Returns:
-            bool: True if the master key is reset successfully, False otherwise
+            old_masterkey (str): Specify the masterkey to set or to reset.
+            mode (Literal(str)): Specify the execution method ['set', 'reset'].
         """
-        if not self.check_master_key(old_masterkey):
-            return False
+        hashed_masterkey: str = Hasher.create_random_hash(masterkey)
+        if mode == 'reset':
+            query: str = DataManagement.predefined_sql('update_masterkey')
+            self.cursor.execute(query, (hashed_masterkey,))
+            return None
         query: str = DataManagement.predefined_sql('set_masterkey')
-        self.cursor.execute(query, (new_masterkey,))
-        return True
+        self.cursor.execute(query, (hashed_masterkey,))
 
     @handler_err_db
     def list_data(self, field=None, data_to_find=None) -> List[Tuple[Any]]:
