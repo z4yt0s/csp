@@ -80,6 +80,7 @@ def set_completer() -> NestedCompleter:
             'username': None,
             'password': None,
         },
+        'changemasterkey': None,
         'reforcepass': None,
         'exit': None,
         'help': {
