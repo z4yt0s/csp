@@ -43,7 +43,7 @@ class _Blake2(Hasher):
 
 class PassCrypt:
     def __init__(self, masterkey: str) -> None:
-        self.key: bytes = PBKDF2(masterkey, b'cspitssoclean', dkLen=32)
+        self.key: bytes = PBKDF2(masterkey, b'cspissoclean', dkLen=32)
     
     def encrypt(self, password: str) -> Tuple[str]:
         cipher = AES.new(self.key, AES.MODE_GCM)
