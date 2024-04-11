@@ -10,7 +10,8 @@ from typing import (
     Any
 )
 from argparse import Namespace
-from functools import wraps
+from time import sleep
+from signal import signal, SIGINT, SIG_IGN
 
 # third-party libraries
 from prompt_toolkit import PromptSession
@@ -19,6 +20,9 @@ from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.cursor_shapes import CursorShape
 from prompt_toolkit.clipboard import Clipboard
 from pyperclip import copy
+
+# test
+from rich.progress import track
 # from prompt_toolkit.key_binding.bindings.named_commands import clear_screen
 
 # own libraries
@@ -55,14 +59,14 @@ class StartCSP:
     def __init__(self) -> None:
         self.vs: Visuals = Visuals()
         self.data_mgmt: DataManagement = DataManagement()
+        self.tmp_session: PromptSession = PromptSession(
+            message=StartCSP.AUTH_QUESTION,
+            style=Style.from_dict({'msg': '#00b44e'}),
+            is_password=True,
+            key_bindings=set_tmp_kb()
+        )
         if not StartCSP._authenticated:
             self.vs.banner()
-            self.tmp_session: PromptSession = PromptSession(
-                message=StartCSP.AUTH_QUESTION,
-                style=Style.from_dict({'msg': '#00b44e'}),
-                is_password=True,
-                key_bindings=set_tmp_kb()
-            )
             self.check_masterkey()
 
     def check_masterkey(self) -> NoReturn:
@@ -72,45 +76,59 @@ class StartCSP:
         of StartCSP._authenticated to True
         """
         if not self.data_mgmt.masterkey_exists():
-            self._set_masterkey()
+            self.create_and_store_masterkey()
         if not self._check_credentials():
             self._exit_csp()
         StartCSP._authenticated = True
         
-    def _set_masterkey(self) -> None:
+    def create_and_store_masterkey(self, reset: bool=False) -> Union[None, str]:
         """
-        Sets the master key for the first time usage. This method prompts the
-        user to provide a master key for the first time the CSP is run. The
-        user will be asked to type the master key twice to verify it.
+        Sets the master key for the first time usage or reset the exists masterkey.
+        This method prompts the user to provide a masterkey. The user will be asked
+        to type the master key twice to verify it.
+
+        Args:
+            reset (bool): If result its True execute sql sintax to update field in
+            the database.
+        
+        Returns:
+            None: when the reset arg its False.
+            str: when the reset arg its True return the new masterkey.
         """
-        welcome_msg()
+        if not reset:
+            welcome_msg()
         while True:
             try:
                 masterkey0: str = self.tmp_session.prompt()
                 if masterkey0 != self.tmp_session.prompt():
-                    self.vs.print('Password must be the same', type='err')
-                    print()
+                    self.vs.print(
+                        'Password must be the same',
+                        type='err',
+                        end='\n'
+                    )
                     continue
                 if not CreateSecurePasswords.is_strong_password(masterkey0):
                     self.vs.print(
                         'The password does not meet the requirements',
-                        type='err'
+                        type='err',
+                        end='\n'
                     )
-                    print()
                     continue
                 break
             except KeyboardInterrupt: self._exit_csp()
             except EOFError: self._exit_csp()
-        hashed_masterkey: str = Hasher.create_random_hash(masterkey0)        
-        query: str = self.data_mgmt.predefined_sql('set_masterkey')
-        self.data_mgmt.cursor.execute(query, (hashed_masterkey,))
+        if reset:
+            self.data_mgmt.re_or_set_masterkey(masterkey0, mode='reset')
+            return masterkey0
+        self.data_mgmt.re_or_set_masterkey(masterkey0)
         self.vs.print('Masterkey inserted correctly', type='inf', end='\n')
     
-    def _check_credentials(self):
+    def _check_credentials(self, masterkey: str = None) -> bool:
         """
         Verifies the user's credentials. This method prompts the user to enter
         a masterkey and verifies if it is correct. The user has a maximum of 3
-        attempts to enter the correct password.
+        attempts to enter the correct password. And set the _passcrypt with the
+        introduce masterkey to cypher the data in future operations.
 
         Returns:
             bool: True if the credentials are correct, False if the attempts 
@@ -121,22 +139,70 @@ class StartCSP:
             try:
                 self.vs.print('Login CSP', type='inf')
                 masterkey: str = self.tmp_session.prompt()
-                if self.data_mgmt.check_master_key(masterkey):
-                    StartCSP._passcrypt = PassCrypt(masterkey)
-                    del masterkey
-                    return True
-                attempts -= 1
-                self.vs.print(
-                    f'Incorrect masterkey. Attempts remaining: {attempts}',
-                    type='err',
-                    end='\n',
-                    bad_render=True
-                )
-            except KeyboardInterrupt: continue
-            except EOFError: self._exit_csp()
+                if not self.data_mgmt.check_master_key(masterkey):
+                    attempts -= 1
+                    self.vs.print(
+                        f'Incorrect masterkey. Attempts remaining: {attempts}',
+                        type='err',
+                        end='\n',
+                        bad_render=True
+                    )
+                    continue
+                StartCSP._passcrypt = PassCrypt(masterkey)
+                del masterkey
+                return True
+            except KeyboardInterrupt as ki:
+                self._exit_csp() if str(ki) == 'ControlD' else print(); continue
         self.vs.print(f'It has exceeded attempts', type='err')
         return False
     
+    def _change_masterkey(self) -> Union[None, bool]:
+        signal(SIGINT, SIG_IGN)
+        self.vs.print(
+            'Executing the masterkey change process..',
+            type='inf',
+            bad_render=True
+        )
+        self.vs.print(
+            'Enter the actual masterkey to decryption of existing data.',
+            type='inf',
+        )
+        old_masterkey: str = self.tmp_session.prompt()
+        if not self.data_mgmt.check_master_key(old_masterkey):
+            self.vs.print( 'The masterkey its invalid', type='err')
+            return None
+        old_crypt_raw_data = self.data_mgmt.list_data()
+        old_raw_data = self._decrypt_listed_data(old_crypt_raw_data)
+        
+        self.vs.print(
+            'Starting the process to create a new masterkey',
+            type='inf',
+            start='\n'
+        )
+        new_masterkey = self.create_and_store_masterkey(reset=True)
+        StartCSP._passcrypt = PassCrypt(new_masterkey)
+        self.vs.print(
+            'Masterkey was created and stored succesfully',
+            type='inf'
+        )
+        self.vs.print(
+            'Beggining the process to encrypt the existing passwords',
+            type='inf'
+        )
+        self.vs.print(
+            f'Numbers of entries detected: {len(old_raw_data)}',
+            type='inf',
+            bad_render=True
+        )
+        for entry in track(old_raw_data, description='[bold blue]Encrypting[/bold blue]'):
+            new_data: List[Union[str, int]] = [
+                'password',
+                entry[3],
+                entry[0]
+            ]
+            self._update(new_data, skip_msg=True)
+            sleep(0.10)
+
     def detect_mode( self, args: Namespace) -> Union['PromptCSP', 'OneLinerCSP']:
         """
         Detects the mode specified in the arguments and returns an instance
@@ -170,7 +236,7 @@ class StartCSP:
             raw_data = self._list_specific(args[:2])
             return None
         crypt_raw_data: List[Tuple[Union[int, str]]] = self.data_mgmt.list_data()
-        raw_data = self._decrypt_listed_data(crypt_raw_data)
+        raw_data: List[str] = self._decrypt_listed_data(crypt_raw_data)
         self.vs.render_table_db(raw_data)
 
     def _list_specific(self, args: List[str]) -> None:
@@ -262,7 +328,7 @@ class StartCSP:
                     type='inf'
                 )
 
-    def _update(self, args: List[str]) -> None:
+    def _update(self, args: List[str], skip_msg: bool=False) -> None:
         """
         Update data in the database based ont he privided field, new data
         and id.
@@ -294,11 +360,8 @@ class StartCSP:
         if field == 'password':
             crypt_data_upd: Tuple[str] = StartCSP._passcrypt.encrypt(data_upd)
             data_upd: str = f'{crypt_data_upd[0]}|{crypt_data_upd[1]}|{crypt_data_upd[2]}'
-        if self.data_mgmt.update_data(field, data_upd, id):
-            self.vs.print(
-                'Data Updated Correctly',
-                type='inf'
-            )
+        if self.data_mgmt.update_data(field, data_upd, id) and not skip_msg:
+            self.vs.print( 'Data Updated Correctly', type='inf')
 
     def _reforcepass(self, args: List[str]) -> None:
         """
@@ -369,7 +432,7 @@ class StartCSP:
         """
         self.vs.print('Save and closing connection to database', type='inf')
         self.data_mgmt.save_and_exit(True)
-        self.vs.print('Exiting..', type='err')
+        self.vs.print('Exiting..', type='err', bad_render=True)
         exit(0)
     
     def _proc_instruction(
@@ -437,6 +500,8 @@ class PromptCSP(StartCSP):
                 self._update(args)
             case 'reforcepass':
                 self._reforcepass(args)
+            case 'changemasterkey':
+                self._change_masterkey()
             case 'help':
                 self._help(args)
             case 'exit':
@@ -463,8 +528,8 @@ class OneLinerCSP(StartCSP):
             proc_args: Union[List[str], bool] = self._proc_instruction(args)
             match argument:
                 case 'change_masterkey': 
-                    if not proc_args: continue 
-                    print('Cambiar masterkey en un futuro implementar')
+                    if not proc_args: continue
+                    self._change_masterkey()
 
                 case 'execute':
                     tmp_prompt: PromptCSP = PromptCSP()
