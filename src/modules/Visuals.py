@@ -1,16 +1,28 @@
 # author: z4yt0s
 # date: 02.29.2024
 # github: https://github.com/z4yt0s/csp
-from typing import ClassVar, Tuple, Union, Literal, Optional, List
+from typing import (
+    Literal,
+    Optional,
+    Iterable,
+    Union,
+    ClassVar,
+    Tuple,
+    List,
+    Dict
+)
 from time import sleep
 
 from rich.theme import Theme
-from rich.console import Console
-from rich.text import Text
+from rich.console import Console, Group, RenderableType
+from rich.text import Text, TextType
+from rich.style import Style, StyleType
 from rich.table import Table
 from rich.align import Align
 from rich.live import Live
-from rich import box
+from rich.panel import Panel
+from rich.padding import PaddingDimensions
+from rich.box import Box, ROUNDED, DOUBLE_EDGE
 
 class Visuals:
     """
@@ -24,7 +36,7 @@ class Visuals:
     COLORS: ClassVar[dict[str, str]] = {
         'green':            '#00b44e',
         'blue':             '#0063e2',
-        'purple':           '#8300ff',
+        'purple':           '#7f00df',
         'pink':             '#ba1d67',
         'red':              '#bc2920',
         'orange':           '#cd620e',
@@ -80,7 +92,7 @@ class Visuals:
         self.console: Console = Console(
             color_system='truecolor', 
             theme=Visuals.CONSOLE_THEME,
-            tab_size=4
+            tab_size=6
         )
     
     def banner(self) -> None:
@@ -138,19 +150,12 @@ class Visuals:
     
     def print(
         self, 
-        msg: Union[str, List[str]],
-        bad_render: Optional[bool]=False,
-        style: Optional[str]=None,
-        type: Optional[Literal[
-            'inf', 
-            'war',
-            'err',
-            'inp',
-            'proc',
-            'list'
-        ]]=None,
-        end: Optional[str]=None,
-        start: Optional[str]=''
+        msg:        Union[str, List[str]],
+        bad_render: bool = False,
+        style:      Optional[str] = None,
+        end:        Optional[str] = None,
+        start:      str = '',
+        type:       Literal['inf', 'war', 'err', 'inp', 'proc', 'list'] = 'inf'
     ) -> None:
         if bad_render: 
             self.special_print(
@@ -162,42 +167,36 @@ class Visuals:
             )
             return None
 
-        match type:
-            case 'inf':
-                self.console.print(f'{start}[*] {msg}.\n', style='blue', end=end)
-            case 'war':
-                self.console.print(f'{start}[?] {msg}.\n', style='yellow', end=end)
-            case 'err':
-                self.console.print(f'{start}[!] {msg}.\n', style='red', end=end)
-            case 'inp':
-                self.console.print(f'{start}[^] {msg}:', style='green', end=end)
-            case 'proc':
-                self.console.print(f'{start}[+] {msg}.\n', end=end)
-            case 'list':
-                if not isinstance(msg, list):
-                    self.print('Can\'t create list if msg not is array')
-                    return None
-                for content in msg:
-                    self.console.print(f'{start}\t[-] {content}', style='pink')
-                self.console.print()
-            case _:
-                self.console.print(msg, style=style, end=end)
-    
+        elif type == 'inf':
+            self.console.print(f'{start}[*] {msg}.\n', style='blue', end=end)
+
+        elif type == 'war':
+            self.console.print(f'{start}[?] {msg}.\n', style='yellow', end=end)
+
+        elif type == 'err':
+            self.console.print(f'{start}[!] {msg}.\n', style='red', end=end)
+
+        elif type == 'inp':
+            self.console.print(f'{start}[^] {msg}:', style='green', end=end)
+
+        elif type == 'proc':
+            self.console.print(f'{start}[+] {msg}.\n', end=end)
+
+        elif type == 'list':
+            if not isinstance(msg, list):
+                self.print('Can\'t create list if msg not is array')
+                return None
+            for content in msg:
+                self.console.print(f'{start}\t[-] {content}', style='pink')
+            self.console.print()
+
     def special_print(
         self, 
-        msg: str,
-        bad_render: Optional[bool]=False,
-        style: Optional[str]=None,
-        type: Optional[Literal[
-            'inf',
-            'war',
-            'err',
-            'inp',
-            'proc',
-            'list'
-        ]]=None,
-        end: Optional[str]=None,
-        start: Optional[str]=''
+        msg:    str,
+        style:  Optional[str] = None,
+        end:    Optional[str] = None,
+        start:  str = '',
+        type:   Literal['inf', 'war', 'err', 'inp', 'proc', 'list'] = 'proc'
     ) -> None:
         if type == 'inf':
             blue: str = Visuals.COLORS['blue']
@@ -228,14 +227,68 @@ class Visuals:
                 self.console.print(f'{start}\t[{purple}[-] {content}[/{purple}]')
             self.console.print()
 
+    def create_panel(
+        self,
+        renderable:     Union[RenderableType, Iterable[RenderableType]],
+        # title
+        title:          Optional[Union[TextType, str]] = None,
+        title_align:    Literal['l', 'c', 'r'] = 'c',
+        highlight:      bool = False,
+        # style
+        style:          StyleType = "none",
+        # border
+        box:            Box = ROUNDED,
+        border_style:   StyleType = "none",
+        safe_box:       Optional[bool] = None,
+        # dimensions
+        width:          Optional[int] = None,
+        height:         Optional[int] = None,
+        expand:         bool = True,
+        padding:        PaddingDimensions = (0, 1),
+        # subtitle
+        subtitle:       Optional[TextType] = None,
+        subtitle_align: Literal['l', 'c', 'r']= 'c',
+    ) -> Union[Panel, Group]:
+        def detect_align(align_type) -> str:
+            match title_align:
+                case 'l': return 'left'
+                case 'c': return 'center'
+                case 'r': return 'right'
+    
+        # management exception when try render Group 'Group object is not iterable'
+        try:
+            is_panel_group: bool = all(isinstance(obj, Panel) for obj in renderable)
+        except TypeError:
+            is_panel_group: bool = False
+    
+        # check if its a panel o group of panels
+        if is_panel_group:
+            return Group(*renderable)
+        return Panel(
+            renderable=renderable,
+            title=title,
+            title_align=detect_align(title_align),
+            highlight=highlight,
+            style=style,
+            box=box,
+            border_style=border_style,
+            safe_box=safe_box,
+            width=width,
+            height=height,
+            expand=expand,
+            padding=padding,
+            subtitle=subtitle,
+            subtitle_align=detect_align(subtitle_align)
+        )
+    
     def render_table_db(
-            self,
-            proc_data: List[Tuple[Union[str, int, None]]],
-            theme: Literal['cold', 'warm']='cold'
+        self,
+        proc_data:  List[Tuple[Union[str, int, None]]],
+        theme:      Literal['cold', 'warm'] = 'cold'
     ) -> None:
         table: Table = Table(
             padding=(0, 1),
-            box=box.DOUBLE_EDGE,
+            box=DOUBLE_EDGE,
             border_style=f'{Visuals.COLORS['grey']}'
         )
 
@@ -294,8 +347,8 @@ class Visuals:
 
             # proc and represent row data
             for row_data in proc_data:
-                    table.add_row(*self._parser_row_data(row_data))
-                    sleep(0.15)
+                table.add_row(*self._parser_row_data(row_data))
+                sleep(0.15)
 
     def _parser_row_data(self, row_data: List[Union[str, int, None]]) -> List[str]:
         str_row_data: List[str] = []
