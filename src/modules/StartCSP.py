@@ -23,6 +23,8 @@ from pyperclip import copy
 
 # test
 from rich.progress import track
+from rich.panel import Panel
+from rich.text import Text
 # from prompt_toolkit.key_binding.bindings.named_commands import clear_screen
 
 # own libraries
@@ -36,6 +38,7 @@ from utils.prompt_config import (
     set_completer,
     welcome_msg
 )
+from utils.help_menu import dict_to_text, list_to_text, MAIN_HELP
 
 class StartCSP:
     """
@@ -498,9 +501,9 @@ class PromptCSP(StartCSP):
                 self._delete(args)
             case 'upd':
                 self._update(args)
-            case 'reforcepass':
+            case 'crftp':
                 self._reforcepass(args)
-            case 'changemasterkey':
+            case 'chmk':
                 self._change_masterkey()
             case 'help':
                 self._help(args)
@@ -512,13 +515,57 @@ class PromptCSP(StartCSP):
                 self.vs.print('Command Not Fount: try [CSP> help]', type='err')
 
     def _help(self, args: List[str]):
-        # in future
-        pass
-    
+        inf_text: Text = list_to_text(
+            MAIN_HELP['inf'],
+            style='yellow',
+            justify='full'
+        )
+        commands_text: Text = dict_to_text(
+            MAIN_HELP['commands'],
+            ['green', 'orange', 'i_purple']
+        )
+        shortcuts_text: Text = dict_to_text(
+            MAIN_HELP['shortcuts'],
+            ['pink', 'orange', 'i_blue']
+        )
+
+        inf_panel = self.vs.create_panel(
+            inf_text,
+            title='info',
+            title_align='r',
+            border_style=self.vs.COLORS['i_dark_yellow'],
+            padding=(1, 2, 1, 2)
+        )
+        commands_panel = self.vs.create_panel(
+            commands_text,
+            title='commands',
+            title_align='r',
+            border_style=self.vs.COLORS['i_dark_green'],
+            padding=(1, 2, 1, 2)
+        )
+        shortcuts_panel = self.vs.create_panel(
+            shortcuts_text,
+            title='shorcuts',
+            title_align='r',
+            border_style=self.vs.COLORS['i_dark_pink'],
+            padding=(1, 2, 1, 2)
+        )
+        panel_group = self.vs.create_panel(renderable=[
+            inf_panel,
+            commands_panel,
+            shortcuts_panel
+        ])
+        help_panel = self.vs.create_panel(
+            panel_group,
+            title='help menu',
+            border_style=self.vs.COLORS['i_grey'],
+            width=60
+        )
+        self.vs.console.print(help_panel)
+
 class OneLinerCSP(StartCSP):
     def __init__(self, args: Namespace) -> None:
-        super().__init__()
-        print()
+        super().__init__(); print()
         self.args = args
     
     def start_mode(self):
