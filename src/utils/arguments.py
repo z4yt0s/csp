@@ -52,6 +52,14 @@ def start_args() -> Union[Namespace]:
         help='Change the CSP masterkey'
     )
     oneliner_parser.add_argument(
+        '-x', '--execute',
+        action='store',
+        type=str,
+        metavar='',
+        default=None,
+        help='Execute a command of prompt mode'
+    )
+    oneliner_parser.add_argument(
         '-a', '--add',
         action='store',
         nargs='+',
@@ -111,51 +119,3 @@ def start_args() -> Union[Namespace]:
     )
     args = parser.parse_args()
     return args
-
-# DEPRECATED
-def check_and_set_args(args: Namespace) -> str:
-    """
-    Validate and set command-line arguments related to password creation.
-
-    Args:
-        args (Namespace): Parsed command-line arguments.
-        vs (Visuals): An instance of the Visuals class for console output.
-
-    Returns:
-        str: The password to be used for creating a strong password.
-
-    Description:
-        This function checks and sets command-line arguments related to password
-        creation. If a password is provided directly, it is returned. If interactive
-        mode is enabled, the user is prompted to input the separator and the password.
-        The function then verifies if the entered password is correct. If not, the 
-        interactive mode is enabled, and the process repeats.
-    """
-    vs: Visuals = Visuals()
-    password: str = ''
-    if args.password is not None:
-        password = args.password
-    while True:
-        if args.interactive:
-            vs.console.print(
-                f'[*] Specifies the character separating the words: ',
-                style='blue',
-                end=''
-            )
-            args.separator = input()
-            vs.console.print(
-                f'[*] Introduce the password: ',
-                style='blue',
-                end=''
-            )
-            password = input()
-        vs.console.print(
-            f'[?] The password |{password}| its correct [Y/n]: ',
-            style='yellow',
-            end=''
-        )
-        if input().lower() == 'n': 
-            args.interactive = True
-            continue
-        break
-    return password
