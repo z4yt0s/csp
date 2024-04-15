@@ -2,6 +2,7 @@ from typing import (
     Self,
     Callable,
     ClassVar,
+    Optional,
     Tuple,
     Union,
     Any,
@@ -90,7 +91,7 @@ class DataManagement:
     '''
     }
 
-    def __new__(cls, masterkey: str = None, *args, **kwargs) -> Self:
+    def __new__(cls, *args, **kwargs) -> Self:
         """
         Implementation of the Singleton pattern for the DataManagement class.
         It ensures that only one instance of this class is created during the
@@ -199,7 +200,7 @@ class DataManagement:
             conn.close()
 
     @classmethod
-    def masterkey_exists(cls, conn: Connection=None) -> bool:
+    def masterkey_exists(cls, conn: Connection = None) -> bool:
         """
         Checks if the master key exists in the database.
 
@@ -246,8 +247,8 @@ class DataManagement:
     @handler_err_db
     def re_or_set_masterkey(
         self,
-        masterkey: str,
-        mode: Literal['set', 'reset']='set'
+        masterkey:  str,
+        mode:       Literal['set', 'reset'] = 'set'
     ) -> None:
         """
         Resets the value of masterkey or set the masterkey.
@@ -265,7 +266,7 @@ class DataManagement:
         self.cursor.execute(query, (hashed_masterkey,))
 
     @handler_err_db
-    def list_data(self, field=None, data_to_find=None) -> List[Tuple[Any]]:
+    def list_data(self, field = None, data_to_find = None) -> List[Tuple[Any]]:
         """
         Retrieve data from the database based on the specified field and data
         to find. If no field or data_to_find is provided, it returns all data
@@ -294,7 +295,12 @@ class DataManagement:
         return data
 
     @handler_err_db
-    def new_entry(self, password: str, site: str=None, username: str=None) -> bool:
+    def new_entry(
+        self,
+        password:   str,
+        site:       Optional[str] = None,
+        username:   Optional[str] = None
+    ) -> bool:
         """
         Adds a new entry to the database.
 
@@ -344,7 +350,7 @@ class DataManagement:
         self.cursor.execute(query, (id,))
         return True
 
-    def save_and_exit(self, close_conn: bool=False) -> None:
+    def save_and_exit(self, close_conn: bool = False) -> None:
         """
         Commits changes to the database and closes the connecion.
 

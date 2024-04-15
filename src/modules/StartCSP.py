@@ -39,6 +39,7 @@ from utils.prompt_config import (
     welcome_msg
 )
 from utils.help_menu import dict_to_text, list_to_text, MAIN_HELP
+from utils.visuals_setup import NAME, LOGO, FOOTERN
 
 class StartCSP:
     """
@@ -69,7 +70,7 @@ class StartCSP:
             key_bindings=set_tmp_kb()
         )
         if not StartCSP._authenticated:
-            self.vs.banner()
+            self.vs.banner(NAME, LOGO, FOOTERN)
             self.check_masterkey()
 
     def check_masterkey(self) -> NoReturn:
@@ -84,7 +85,10 @@ class StartCSP:
             self._exit_csp()
         StartCSP._authenticated = True
         
-    def create_and_store_masterkey(self, reset: bool=False) -> Union[None, str]:
+    def create_and_store_masterkey(
+       self,
+       reset: bool = False
+    ) -> Union[None, str]:
         """
         Sets the master key for the first time usage or reset the exists masterkey.
         This method prompts the user to provide a masterkey. The user will be asked
@@ -331,7 +335,7 @@ class StartCSP:
                     type='inf'
                 )
 
-    def _update(self, args: List[str], skip_msg: bool=False) -> None:
+    def _update(self, args: List[str], skip_msg: bool = False) -> None:
         """
         Update data in the database based ont he privided field, new data
         and id.
@@ -379,7 +383,6 @@ class StartCSP:
             None: This method does not return any value.
         """
         if len(args) > 2:
-            #*password, separator = args
             password = args
             separator = ' '
             password: str = separator.join(password)
@@ -403,7 +406,6 @@ class StartCSP:
         )
         copy(reforce_pass)
 
-    # posibly decorator in a future
     def _check_exists_id(self, id: str) -> bool:
         """
         Check if data with the provided ID exists in the database. If not
@@ -570,7 +572,6 @@ class OneLinerCSP(StartCSP):
     
     def start_mode(self):
         for argument, args in self.args.__dict__.items():
-            #print(f'{argument} -> {args} -> {type(args)}')
             if args is None: continue
             proc_args: Union[List[str], bool] = self._proc_instruction(args)
             match argument:

@@ -1,7 +1,3 @@
-# author: z4yt0s
-# date: 02.29.2024
-# github: https://github.com/z4yt0s/csp
-
 from typing import ClassVar, Tuple, List, Dict
 
 class CreateSecurePasswords:

@@ -8,7 +8,7 @@ from Crypto.Cipher import AES
 from Crypto.Protocol.KDF import PBKDF2
 
 class Hasher(ABC):
-    _IDS: ClassVar[List[str]]= ['1sk', '7wpkgh', 'q0pzth']
+    _IDS: ClassVar[List[str]] = ['1sk', '7wpkgh', 'q0pzth']
     
     @classmethod
     def create_random_hash(cls, data: str) -> str:
@@ -39,7 +39,6 @@ class _Sha512(Hasher):
 class _Blake2(Hasher):
     def encrypt(self, data: str) -> str:
         return f'{blake2b(data.encode()).hexdigest()}{self._IDS[2]}'
-
 
 class PassCrypt:
     def __init__(self, masterkey: str) -> None:

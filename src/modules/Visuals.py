@@ -7,6 +7,7 @@ from typing import (
     Iterable,
     Union,
     ClassVar,
+    Any,
     Tuple,
     List,
     Dict
@@ -81,6 +82,7 @@ class Visuals:
         'i_dark_yellow':    'italic #858125'
     }
     CONSOLE_THEME: ClassVar[Theme] = Theme(COLORS)
+    _banner: ClassVar[Any] = None
 
     def __init__(self) -> None:
         """
@@ -95,42 +97,22 @@ class Visuals:
             tab_size=6
         )
     
-    def banner(self) -> None:
+    def banner(
+        self,
+        name:       Optional[List[str]] = None,
+        logo:       Optional[List[str]] = None,
+        footern:    Optional[List[str]] = None
+    ) -> None:
         """
         Display the banner of the tool
         """
+        if isinstance(Visuals._banner, Table):
+            self.console.print(Visuals._banner)
+            return None
+
         text_name: Text = Text()
         text_logo: Text = Text()
         text_footern: Text = Text()
-
-        name: List[str] = [
-            '\n'
-            '  /$$$$$$$  /$$$$$$$  /$$$$$$\n',
-            ' /$$_____/ /$$_____/ /$$__  $$\n',
-            '| $$      |  $$$$$$ | $$  \\ $$\n',
-            '| $$       \\____  $$| $$  | $$\n',
-            '|  $$$$$$$ /$$$$$$$/| $$$$$$$/\n',
-            ' \\_______/|_______/ | $$____/\n',
-            '                    | $$\n',
-            '                    | $$\n',
-            '                    |__/\n'
-        ]
-        logo: List[str] = [
-            '\n'
-            '    .-""-.\n',
-            '   / .--. \\\n',
-            '  | |    | |\n',
-            '  | |.-""-.|\n',
-            ' ///`.::::.`\\\n',
-            '||| ::/  \\:: ;\n',
-            '||| ::\\__/:: ;\n',
-            ' \\\\\\ \'::::\' /\n',
-            '  `=\'--..-\'`\n'
-        ]
-        footern: List[str] = [
-            '===============================================\n',
-            '  Create Secure Password - created by: z4yt0s\n'
-        ]
 
         for line in name:
             text_name.append(f'{line}', style=f'{Visuals.COLORS['b_dark_green']}')
@@ -257,12 +239,12 @@ class Visuals:
     
         # management exception when try render Group 'Group object is not iterable'
         try:
-            is_panel_group: bool = all(isinstance(obj, Panel) for obj in renderable)
+            is_panel_grp: bool = all(isinstance(obj, Panel) for obj in renderable)
         except TypeError:
-            is_panel_group: bool = False
+            is_panel_grp: bool = False
     
         # check if its a panel o group of panels
-        if is_panel_group:
+        if is_panel_grp:
             return Group(*renderable)
         return Panel(
             renderable=renderable,
@@ -353,9 +335,10 @@ class Visuals:
     def _parser_row_data(self, row_data: List[Union[str, int, None]]) -> List[str]:
         str_row_data: List[str] = []
         for data in row_data:
-            if data is None:
-                str_row_data.append(
-                    f'[{Visuals.COLORS['grey']}]-[/{Visuals.COLORS['grey']}]'
-                ); continue
-            str_row_data.append(str(data))
+            if data is not None:
+                str_row_data.append(str(data))
+                continue
+            str_row_data.append(
+                f'[{Visuals.COLORS['grey']}]-[/{Visuals.COLORS['grey']}]'
+            )
         return str_row_data
