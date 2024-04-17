@@ -26,6 +26,111 @@ MAIN_HELP: Dict[str, Union[Dict[str, str], List]] = {
         '\'help [command name]\' to view more details.'
     ]
 }
+LIST_HELP: Dict[str, Union[Dict[str, str], str]] = {
+    'description': [
+        'The list command allows you to display data from the password',
+        'database. You can either list the entire database or perform'
+        'a specific query to find particular data.'
+    ],
+    'options': [
+        'To list the entire database:',
+        '\tCSP> list',
+        'To perform a specific query:',
+        '\t[field]: The field you want to search',
+        '\t[data]: The specific data you want to find',
+        '\tCSP> list [field] [data]'
+    ],
+    'usage': ['list [\{field, data\}]'],
+    'examples': [
+        'List the entire database:'
+        '\tCSP> list',
+        'Find passwords for a specific id, user, site or password'
+        '\tCPS> list id 8',
+        '\tCPS> list site github',
+        '\tCPS> list username zaytos',
+        '\tCPS> list password P4$$w0rd',
+    ]
+}
+ADD_HELP: Dict[str, Union[Dict[str, str], List[str]]] = {
+    'description': [
+        'The add command allows you to create a new entry',
+        'in the password database.'
+    ],
+    'arguments': {
+        'site': 'The name of service associated with the password',
+        'username': 'The account name associated with the password',
+        'password': 'The password for the website or service'
+    },
+    'usage': ['add [\{site\}, \{username\}] {password}'],
+    'examples': [
+        'Add a new entry with site, username, and password:'
+        '\tCSP> add github keanu wakeupneo'
+        'Add a new entry with username and password only:',
+        '\tCSP> add r4ker iloveyou.exe',
+        'Add a new entry with only a password:',
+        '\tCSP> add idkthepasswordtoset'
+    ]
+}
+UPD_HELP: Dict[str, Union[Dict[str, str], str]] = {
+    'description': [
+        'The update command allows you to modify data in the password'
+        'database based on the provided field, new data, and id.'
+    ],
+    'arguments': {
+        'field': 'The field to update',
+        'new_data': 'The new data to replace the existing data',
+        'id': 'The identifier of the data to be updated'
+    },
+    'usage': ['update \{field\} \{new_data\} \{id\}'],
+    'examples': [
+        'Update the password for a specific entry:'
+        '\tCSP> update password new_password 123'
+    ]
+}
+DEL_HELP: Dict[str, Union[Dict[str, str], str]] = {
+    'description': [
+        'The delete command allows you to remove data from the',
+        'password database based on the provided id.'
+    ],
+    'arguments': {
+        'id': 'The identifier of the data to be deleted'
+    },
+    'usage': ['del \{id\} | \{id1\} \{id2\} ...'],
+    'examples': [
+        'Delete an entry with a specific id:',
+        '\tCSP> delete 7',
+        'Delete multiple entries with specific ids:',
+        '\tCSP> delete 4 5 9'
+    ]
+}
+CRFTP_HELP: Dict[str, Union[Dict[str, str], str]] = {
+    'description': [
+        'The crftp (CraftPassword) command converts a phrase into a stronger',
+        'password by generating a password using CSP algorithm.'
+    ],
+    'arguments': {
+        'phrase': 'The phrase to be converted into a password',
+        'separator': 'Use to identifying words in the phrase (Def: space)'
+    },
+    'usage': ['crftp \{phrase\} [separator]'],
+    'examples': [
+        'Reinforce a password with default separator:',
+        '\tCSP> crftp i like python and rust',
+        'Reinforce a password with custom separator:',
+        '\tCPS> reforcepass i_dont_like_java _'
+    ]
+}
+CHMK_HELP: Dict[str, Union[Dict[str, str], str]] = {
+    'description': [
+        'The chmk (ChangeMasterkey) command allows you to update your master',
+        'key securely. First, you authenticate using your current master key.',
+        'Then, you enter your new master key. The command decrypts your',
+        'existing passwords using the old master key and encrypts them again',
+        'using the new one. This ensures that all your passwords are protected',
+        'with the updated master key.'
+    ],
+    'usage': ['chmk'],
+}
 
 def dict_to_text(
     data:       Dict[str, str],

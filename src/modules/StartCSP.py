@@ -38,7 +38,17 @@ from utils.prompt_config import (
     set_completer,
     welcome_msg
 )
-from utils.help_menu import dict_to_text, list_to_text, MAIN_HELP
+from utils.help_menu import (
+    dict_to_text,
+    list_to_text,
+    MAIN_HELP,
+    LIST_HELP,
+    ADD_HELP,
+    UPD_HELP,
+    DEL_HELP,
+    CRFTP_HELP,
+    CHMK_HELP
+)
 from utils.visuals_setup import NAME, LOGO, FOOTERN
 
 class StartCSP:
@@ -495,75 +505,125 @@ class PromptCSP(StartCSP):
     def _check_command(self, instruction: str) -> None:
         command, args = self._proc_instruction(instruction)
         match command:
-            case 'list':
-                self._list(args)
-            case 'add':
-                self._add(args)
-            case 'del':
-                self._delete(args)
-            case 'upd':
-                self._update(args)
-            case 'crftp':
-                self._reforcepass(args)
-            case 'chmk':
-                self._change_masterkey()
-            case 'help':
-                self._help(args)
-            case 'exit':
-                self._exit_csp()
-            case '^C':
-                pass
-            case _:
-                self.vs.print('Command Not Fount: try [CSP> help]', type='err')
+            case 'list': self._list(args)
+            case 'add': self._add(args)
+            case 'del': self._delete(args)
+            case 'upd': self._update(args)
+            case 'crftp': self._reforcepass(args)
+            case 'chmk': self._change_masterkey()
+            case 'help': self._help(args)
+            case 'exit': self._exit_csp()
+            case '^C': pass
+            case _: self.vs.print('Command Not Fount: try [CSP> help]', type='err')
 
-    def _help(self, args: List[str]):
-        inf_text: Text = list_to_text(
-            MAIN_HELP['inf'],
-            style='yellow',
-            justify='full'
-        )
-        commands_text: Text = dict_to_text(
-            MAIN_HELP['commands'],
-            ['green', 'orange', 'i_purple']
-        )
-        shortcuts_text: Text = dict_to_text(
-            MAIN_HELP['shortcuts'],
-            ['pink', 'orange', 'i_blue']
-        )
+    def _help(self, args: List[str]) -> None:
+        def _h_main() -> Panel:
+            # add format to text
+            inf_text: Text = list_to_text(
+                MAIN_HELP['inf'],
+                style='yellow',
+                justify='full'
+            )
+            commands_text: Text = dict_to_text(
+                MAIN_HELP['commands'],
+                ['green', 'orange', 'i_purple']
+            )
+            shortcuts_text: Text = dict_to_text(
+                MAIN_HELP['shortcuts'],
+                ['pink', 'orange', 'i_blue']
+            )
+            # add individual panels
+            inf_panel = self.vs.create_panel(
+                inf_text,
+                title='info',
+                title_align='r',
+                border_style=self.vs.COLORS['i_dark_yellow'],
+                padding=(1, 2, 1, 2)
+            )
+            commands_panel = self.vs.create_panel(
+                commands_text,
+                title='commands',
+                title_align='r',
+                border_style=self.vs.COLORS['i_dark_green'],
+                padding=(1, 2, 1, 2)
+            )
+            shortcuts_panel = self.vs.create_panel(
+                shortcuts_text,
+                title='shorcuts',
+                title_align='r',
+                border_style=self.vs.COLORS['i_dark_pink'],
+                padding=(1, 2, 1, 2)
+            )
+            # create panel group
+            panel_group = self.vs.create_panel(renderable=[
+                inf_panel,
+                commands_panel,
+                shortcuts_panel
+            ])
+            # create final panel
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
 
-        inf_panel = self.vs.create_panel(
-            inf_text,
-            title='info',
-            title_align='r',
-            border_style=self.vs.COLORS['i_dark_yellow'],
-            padding=(1, 2, 1, 2)
-        )
-        commands_panel = self.vs.create_panel(
-            commands_text,
-            title='commands',
-            title_align='r',
-            border_style=self.vs.COLORS['i_dark_green'],
-            padding=(1, 2, 1, 2)
-        )
-        shortcuts_panel = self.vs.create_panel(
-            shortcuts_text,
-            title='shorcuts',
-            title_align='r',
-            border_style=self.vs.COLORS['i_dark_pink'],
-            padding=(1, 2, 1, 2)
-        )
-        panel_group = self.vs.create_panel(renderable=[
-            inf_panel,
-            commands_panel,
-            shortcuts_panel
-        ])
-        help_panel = self.vs.create_panel(
-            panel_group,
-            title='help menu',
-            border_style=self.vs.COLORS['i_grey'],
-            width=60
-        )
-        self.vs.console.print(help_panel)
+        def _h_list():
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
+
+        def _h_add():
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
+
+        def _h_upd():
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
+
+        def _h_del():
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
+
+        def _h_crftp():
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
+
+        def _h_chmk():
+            return self.vs.create_panel(
+                panel_group,
+                title='help menu',
+                border_style=self.vs.COLORS['i_grey'],
+                width=60
+            )
+
+        match args:
+            case 'list': self.vs.console(_h_list())
+            case 'add': self.vs.console(_h_add())
+            case 'upd': self.vs.console(_h_upd())
+            case 'del': self.vs.console(_h_del())
+            case 'crftp': self.vs.console(_h_crftp())
+            case 'chmk': self.vs.console(_h_chmk())
+            case _: self.vs.console.print(_h_main())
 
 class OneLinerCSP(StartCSP):
     def __init__(self, args: Namespace) -> None:
