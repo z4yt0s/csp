@@ -34,7 +34,7 @@ class Visuals:
         COLORS (ClassVar[Dict[str, str]])
         CONSOLE_THEME (ClassVar[Theme]): Set the default theme for the console.
     """
-    COLORS: ClassVar[dict[str, str]] = {
+    COLORS: ClassVar[Dict[str, str]] = {
         'green':            '#00b44e',
         'blue':             '#0063e2',
         'purple':           '#7f00df',
@@ -226,7 +226,7 @@ class Visuals:
         width:          Optional[int] = None,
         height:         Optional[int] = None,
         expand:         bool = True,
-        padding:        PaddingDimensions = (0, 1),
+        padding:        PaddingDimensions = (1, 2, 1, 2),
         # subtitle
         subtitle:       Optional[TextType] = None,
         subtitle_align: Literal['l', 'c', 'r']= 'c',
