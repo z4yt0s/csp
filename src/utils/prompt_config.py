@@ -88,7 +88,8 @@ def set_completer() -> NestedCompleter:
             'add': None,
             'del': None,
             'upd': None,
-            'help': None,
+            'crftp': None,
+            'chmk': None,
         }
     }
     return NestedCompleter.from_nested_dict(CSP_COMPLETER)
