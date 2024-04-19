@@ -336,14 +336,32 @@ class StartCSP:
         Return:
             None: print a message if exec was success or not.
         """
-        for id in args:
-            if not self._check_exists_id(id):
-                return None
+        def _del_id(id): 
+            if not self._check_exists_id(id): return False
             if self.data_mgmt.delete_data(id):
                 self.vs.print(
-                    'Data Deleted Correctly',
-                    type='inf'
+                    f'Data Deleted Correctly: {id} id',
+                    type='inf',
+                    bad_render=True
                 )
+                return True
+
+        # detect range mode
+        index_range_mode = list(map(
+            lambda r_index: r_index[0],
+            filter(lambda x: '..' in x[1], enumerate(args))
+        ))
+        for index, id in enumerate(args):
+            if index in index_range_mode: continue
+            if not _del_id(id): continue
+
+        if index_range_mode is None: return None
+        for index in index_range_mode:
+            range_ = args[int(index)]
+            id_beg, id_end = map(int, range_.split('..'))
+            # map() delays execution until needed; but wrapping list around
+            # around map 'list(map())' forces immediate execution of map object
+            list(map(_del_id, range(id_beg, id_end + 1)))
 
     def _update(self, args: List[str], skip_msg: bool = False) -> None:
         """
@@ -522,10 +540,6 @@ class PromptCSP(StartCSP):
                 CHMK_HELP['description'],
                 style='yellow',
                 justify='full'
-            )
-            usage_text: Text = list_to_text(
-                CHMK_HELP['usage'],
-                style='i_orange'
             )
 
             description_panel: Panel = self.vs.create_panel(
