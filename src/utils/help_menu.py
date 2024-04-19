@@ -10,7 +10,8 @@ from rich.panel import Panel
 # f
 from modules.Visuals import Visuals
 
-MAIN_HELP: Dict[str, Union[Dict[str, str], List]] = {
+MAIN_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'help',
     'inf': [
         'If you\'d like more information about available commands,',
         'including examples and options, simply enter the command',
@@ -33,7 +34,8 @@ MAIN_HELP: Dict[str, Union[Dict[str, str], List]] = {
     }
 
 }
-LIST_HELP: Dict[str, Union[Dict[str, str], str]] = {
+LIST_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'list',
     'description': [
         'The list command allows you to display data from the password',
         'database. You can either list the entire database or perform'
@@ -52,7 +54,8 @@ LIST_HELP: Dict[str, Union[Dict[str, str], str]] = {
         'Find passwords fro a specific password': ' CPS> list password P4$$w0rd',
     }
 }
-ADD_HELP: Dict[str, Union[Dict[str, str], List[str]]] = {
+ADD_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'add',
     'description': [
         'The add command allows you to create a new entry',
         'in the password database.'
@@ -69,7 +72,8 @@ ADD_HELP: Dict[str, Union[Dict[str, str], List[str]]] = {
         'New entry with only a password:': ' CSP> add idkthepasswordtoset'
     }
 }
-UPD_HELP: Dict[str, Union[Dict[str, str], str]] = {
+UPD_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'upd',
     'description': [
         'The update command allows you to modify data in the password'
         'database based on the provided field, new data, and id.'
@@ -81,24 +85,27 @@ UPD_HELP: Dict[str, Union[Dict[str, str], str]] = {
         'id\t': 'The identifier of the data to be updated'
     },
     'examples': {
-        'Update the password for a specific entry:': ' CSP> update password 3X4mpl3 3'
+        'Update the password for a specific entry:': ' CSP> upd password 3X4mpl3 3'
     }
 }
-DEL_HELP: Dict[str, Union[Dict[str, str], str]] = {
+DEL_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'del',
     'description': [
         'The delete command allows you to remove data from the',
         'password database based on the provided id.'
     ],
-    'usage': ['del {id} | {id1} {id2} ...'],
+    'usage': ['del {id} | {id1} {id2} ... | {id1}..{id5}'],
     'arguments': {
         'id': 'The identifier of the data to be deleted'
     },
     'examples': {
-        'Delete an entry with a specific id:': ' CSP> delete 7\n',
-        'Delete multiple entries with specific ids:': ' CSP> delete 4 5 9'
+        'Delete an entry with a specific id:': ' CSP> del 7\n',
+        'Delete multiple entries with specific ids:': ' CSP> del 4 5 9\n',
+        'Delete a range of entries': 'CSP> del 10..15'
     }
 }
-CRFTP_HELP: Dict[str, Union[Dict[str, str], str]] = {
+CRFTP_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'crftp',
     'description': [
         'The crftp (CraftPassword) command converts a phrase into a stronger',
         'password by generating a password using CSP algorithm.'
@@ -113,7 +120,8 @@ CRFTP_HELP: Dict[str, Union[Dict[str, str], str]] = {
         'CraftPassword with custom separator:': ' CPS> crftp i_dont_like_java _'
     }
 }
-CHMK_HELP: Dict[str, Union[Dict[str, str], str]] = {
+CHMK_HELP: Dict[str, Union[Dict[str, str], List[str], str]] = {
+    'title': 'chmk',
     'description': [
         'The chmk (ChangeMasterkey) command allows you to update your master',
         'key securely. First, you authenticate using your current master key.',
@@ -264,7 +272,7 @@ def create_general_menus(
     ])
     return vs.create_panel(
         panel_group,
-        title='list',
+        title=DICT_TEXT['title'],
         border_style=vs.COLORS['i_grey'],
         padding=(0, 0),
         width=70
