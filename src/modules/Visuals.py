@@ -328,9 +328,14 @@ class Visuals:
             sleep(0.15)
 
             # proc and represent row data
+            if len(proc_data) > 49:
+                for row_data in proc_data:
+                    table.add_row(*self._parser_row_data(row_data))
+                return
             for row_data in proc_data:
                 table.add_row(*self._parser_row_data(row_data))
-                sleep(0.15)
+                sleep(0.15); continue
+                
 
     def _parser_row_data(self, row_data: List[Union[str, int, None]]) -> List[str]:
         str_row_data: List[str] = []
