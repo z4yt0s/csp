@@ -23,14 +23,6 @@ from sys import exc_info
 
 from modules.Crypt import Hasher
 
-# IMPLEMENTS TO FUTURE:
-#
-# implementar detección de usuario, en el caso de que ya exista
-# preguntar al usuario si quiere, eliminarla o pisar la información
-# con una respuesta booleana y tal
-#
-# manejador de errores
-
 class DataManagement:
     """
     DataManagement class handles database operations for the CSP tool
@@ -291,7 +283,7 @@ class DataManagement:
         else:
             query: str = DataManagement.predefined_sql('get_data')
             self.cursor.execute(query)
-        data: List[Any] = self.cursor.fetchall()
+        data: List[Tuple[Any]] = self.cursor.fetchall()
         return data
 
     @handler_err_db

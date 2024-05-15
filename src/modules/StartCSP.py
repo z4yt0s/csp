@@ -47,7 +47,9 @@ from utils.help_menu import (
     UPD_HELP,
     DEL_HELP,
     CRFTP_HELP,
-    CHMK_HELP
+    CHMK_HELP,
+    MAIN_HELP_ONELINER,
+    ARGS_HELP_ONELINER,
 )
 from utils.visuals_setup import NAME, LOGO, FOOTERN
 
@@ -61,6 +63,7 @@ class StartCSP:
         AUTH_QUESTION (ClassVar[List[Tuple[str, str]]]): Representing the 
         autentication question presented to the user, with the format for
         required to 'message' from PromptSession class.
+
         _authenticated (bool): a flag indicating whether the user has been
         successfull authenticated.
     """
@@ -173,8 +176,17 @@ class StartCSP:
         self.vs.print(f'It has exceeded attempts', type='err')
         return False
     
-    def _change_masterkey(self) -> Union[None, bool]:
+    def _change_masterkey(self) -> None:
+        """
+        Change the masterkey of the csp database, in this process it checks the
+        old masterkey and stores it. Subsequently it gets all the entries from
+        database and decrypts them. In this point start the process to set a new
+        masterkey. If its create correctly, the old entries decrypted we encrypt
+        in base a new masterkey. And show the progress with a bar.
+        """
         signal(SIGINT, SIG_IGN)
+        
+        # check old masterkey and decrypt all entries of csp database
         self.vs.print(
             'Executing the masterkey change process..',
             type='inf',
@@ -186,11 +198,12 @@ class StartCSP:
         )
         old_masterkey: str = self.tmp_session.prompt()
         if not self.data_mgmt.check_master_key(old_masterkey):
-            self.vs.print( 'The masterkey its invalid', type='err')
+            self.vs.print('The masterkey its invalid', type='err')
             return None
         old_crypt_raw_data = self.data_mgmt.list_data()
         old_raw_data = self._decrypt_listed_data(old_crypt_raw_data)
         
+        # create new masterkey and cypher the old_raw_data with new masterkey
         self.vs.print(
             'Starting the process to create a new masterkey',
             type='inf',
@@ -211,13 +224,14 @@ class StartCSP:
             type='inf',
             bad_render=True
         )
+        # render a the progress bar
         for entry in track(old_raw_data, description='[bold blue]Encrypting[/bold blue]'):
             new_data: List[Union[str, int]] = [
                 'password',
                 entry[3],
                 entry[0]
             ]
-            self._update(new_data, skip_msg=True)
+            self._upd(new_data, skip_msg=True)
             sleep(0.10)
 
     def detect_mode( self, args: Namespace) -> Union['PromptCSP', 'OneLinerCSP']:
@@ -300,7 +314,7 @@ class StartCSP:
 
     def _add(self, args: List[str]) -> None:
         """
-        Create a new entry to database
+        Create a new entry to database, and encrypt password.
         
         Args:
             args (List[str]): The argument depend on the data to be added. If
@@ -311,12 +325,14 @@ class StartCSP:
             None. Prints a message indicating whether the data was added 
             successfully
         """
+        site: str = None
+        username: str = None
+        password: str = None
         if len(args) == 3:
             site, username, password = args
         elif len(args) == 2:
             username, password = args
-        else:
-            password = args[0]
+
         crypt_raw_pass: Tuple[str] = StartCSP._passcrypt.encrypt(password)
         password = f'{crypt_raw_pass[0]}|{crypt_raw_pass[1]}|{crypt_raw_pass[2]}'
         if self.data_mgmt.new_entry(password, site, username):
@@ -325,7 +341,7 @@ class StartCSP:
                 type='inf'
             )
 
-    def _delete(self, args: List[str]) -> None:
+    def _del(self, args: List[str]) -> None:
         """
         Delete data from the database based on the provided id. If the provided
         id not exists end the method, printing a error message.
@@ -336,34 +352,53 @@ class StartCSP:
         Return:
             None: print a message if exec was success or not.
         """
-        def _del_id(id): 
+        def _del_id(id: int) -> bool:
+            """
+            The function deletes a specific entry of csp database, in base to
+            id of the entry. This check if id exists in the record.
+            
+            Args:
+                id (int): the number of id to delete.
+                
+            Returns:
+                bool: False if the id dont exists in record, True if this delete
+                successfully.
+            """
             if not self._check_exists_id(id): return False
             if self.data_mgmt.delete_data(id):
                 self.vs.print(
-                    f'Data Deleted Correctly: {id} id',
+                    f'Data Deleted Correctly: id {id}',
                     type='inf',
                     bad_render=True
                 )
                 return True
 
-        # detect range mode
-        index_range_mode = list(map(
-            lambda r_index: r_index[0],
-            filter(lambda x: '..' in x[1], enumerate(args))
+        # enumerate, returns an iterable containing (index | value). Each value
+        # is checked to see if it contains'..' y filter returns only data matching
+        # that condition. Subsequently the function get_range_index is mapped,
+        # with the iterable resulting from filter, storing in index_range_mode a
+        # list of values of indexes that its syntax follows the range deletion
+        # mode. If not detect this mode index_range_mode storaged None value.
+        index_range_mode: Union[None, List[int]] = list(map(
+            lambda get_range_index: get_range_index[0],
+            filter(lambda index_val: '..' in index_val[1], enumerate(args))
         ))
+
+        # normal mode
         for index, id in enumerate(args):
             if index in index_range_mode: continue
             if not _del_id(id): continue
 
+        # range mode
         if index_range_mode is None: return None
         for index in index_range_mode:
-            range_ = args[int(index)]
+            range_ = args[index]
             id_beg, id_end = map(int, range_.split('..'))
             # map() delays execution until needed; but wrapping list around
-            # around map 'list(map())' forces immediate execution of map object
+            # map 'list(map())' forces immediate execution of map object
             list(map(_del_id, range(id_beg, id_end + 1)))
 
-    def _update(self, args: List[str], skip_msg: bool = False) -> None:
+    def _upd(self, args: List[str], skip_msg: bool = False) -> None:
         """
         Update data in the database based ont he privided field, new data
         and id.
@@ -390,17 +425,18 @@ class StartCSP:
                 type='war'
             )
             return None
-        if not self._check_exists_id(id):
-            return None
+
+        if not self._check_exists_id(id): return None
         if field == 'password':
             crypt_data_upd: Tuple[str] = StartCSP._passcrypt.encrypt(data_upd)
             data_upd: str = f'{crypt_data_upd[0]}|{crypt_data_upd[1]}|{crypt_data_upd[2]}'
+
         if self.data_mgmt.update_data(field, data_upd, id) and not skip_msg:
             self.vs.print( 'Data Updated Correctly', type='inf')
 
-    def _reforcepass(self, args: List[str]) -> None:
+    def _crftp(self, args: List[str]) -> None:
         """
-        Reinforces a given password by generating a stronger password using
+        Craft-Password a given password by generating a stronger password using
         CreateSecurePasswords class.
 
         Args:
@@ -421,12 +457,14 @@ class StartCSP:
             password=password,
             separator=separator
         )
+
         reforce_pass: str = csp.create_strong_pass()
         self.vs.print('Password reforce succesfull', type='inf')
         if not csp.is_strong_password(reforce_pass):
             msg0: str = 'The generated password does not meet security '
             msg1: str = 'requirements. Use it at your own risk'
             self.vs.print(f'{msg0}{msg1}', type='war')
+
         self.vs.print(
             f'{reforce_pass} -> copied to clipboard',
             type='proc',
@@ -448,6 +486,7 @@ class StartCSP:
         id_data = self.data_mgmt.list_data('id', id)
         if len(id_data) != 0:
             return True
+
         self.vs.print(
             f'The id: {id} does not exist, therefore the action cannot be executed',
             type='err',
@@ -455,7 +494,7 @@ class StartCSP:
         )
         return False
 
-    def _exit_csp(self) -> NoReturn:
+    def _exit_csp(self, print_msg: bool = True) -> NoReturn:
         """
         Exit the CSP tool. This method prints an exit message, saves an 
         necessary data, and terminates the program
@@ -463,34 +502,68 @@ class StartCSP:
         Return:
             NoReturn: end the program.
         """
-        self.vs.print('Save and closing connection to database', type='inf')
+        if print_msg:
+            self.vs.print('Save and closing connection to database', type='inf')
         self.data_mgmt.save_and_exit(True)
-        self.vs.print('Exiting..', type='err', bad_render=True)
+        if print_msg:
+            self.vs.print('Exiting..', type='err', bad_render=True)
         exit(0)
     
     def _proc_instruction(
         self,
         instruction: Union[str, bool]
-    ) -> Union[Tuple[str, List[str]], List[str]]:
-        # Proc true options ('change masterkey')
+    ) -> Union[bool, Tuple[str, List[str]], List[str]]:
+        """
+        Process the instructions in each mode, this method have three modes:
+            Proc True Options:
+                If detects bool type return the value of bool instruction.
+            PromptCSP:
+                In prompt mode we need divide the raw instruction in two parts
+                (commands & args), commands is the first part of an instruction,
+                and this is esasy to identify, but the args the args have to be
+                processed. These are divided by ' ', and the returned in a list
+                of words between the spaces.
+            OneLinerCSP:
+                In oneliner mode, we identify the commands by the use of flags,
+                so we are only interested in processing the arguments. In this
+                case it is the same method as the previous case. The difference
+                is that only the arguments are returned in a list.
+        Args:
+            instructions (str, bool): instruction to be processed.
+        Return:
+            bool, True Options
+            Tuple(str, List(str)): PromptCSP
+            List(str): OnelinerCSP
+        """
         if type(instruction).__name__ == 'bool':
             return instruction
         
         son_class: str = type(self).__name__
         if son_class == 'PromptCSP':
             command, *args = instruction.strip().split(' ')
-            args = list(filter(lambda arg: arg != '', args))
+            args: List[str] = list(filter(lambda arg: arg != '', args))
             return (command, args)
 
         if son_class == 'OneLinerCSP':
-            args = [
-                word for proc_args in instruction
-                for word in proc_args.strip().split(' ')
+            args: List[str] = [
+                word for raw_args in instruction
+                for word in raw_args.strip().split(' ')
             ]
             args = list(filter(lambda arg: arg != '', args))
             return args
 
-    def _decrypt_listed_data(self, crypt_raw_data) -> List[str]:
+    def _decrypt_listed_data(self, crypt_raw_data: List[Tuple[Any]]) -> List[str]:
+        """
+        Decrypt the data returned of database in _list or _list_specific method
+
+        Args:
+            crypt_raw_data(List(Tuple(Any))): its the data returned of database
+            after queried.
+
+        Return:
+            List(str): Return a list with all data decrypted and more easier to
+            read and iterate
+        """
         decrypted_passwords = [
             StartCSP._passcrypt.decrypt(tuple(fields[3].split('|')))
             for fields in crypt_raw_data
@@ -501,7 +574,17 @@ class StartCSP:
         ]
 
 class PromptCSP(StartCSP):
+    """
+    The PromptCSP class handles user interaction in the interactive mode of
+    the CSP tool. It inherits from the StartCSP class and overrides methods
+    to handle user input and execute corresponding actions.
+    """
     def __init__(self) -> None:
+        """
+        Atributes:
+            csp_session (PromptSession): PromptSession instance for handling
+            user input.
+        """
         super().__init__()
         self.csp_session: PromptSession = PromptSession(
             message=[('class:prompt', '\nCSP> ')],
@@ -513,6 +596,9 @@ class PromptCSP(StartCSP):
         )
 
     def start_mode(self) -> None:
+        """
+        Start the prompt mode of the tool CSP tool.
+        """
         while True:
             try:
                 instruction: str = self.csp_session.prompt()
@@ -521,13 +607,19 @@ class PromptCSP(StartCSP):
                 self._check_command('^C')
 
     def _check_command(self, instruction: str) -> None:
+        """
+        Check and processes the user input.
+
+        Args: 
+            instruction (str): User input containing the command and argument.
+        """
         command, args = self._proc_instruction(instruction)
         match command:
             case 'list': self._list(args)
             case 'add': self._add(args)
-            case 'del': self._delete(args)
-            case 'upd': self._update(args)
-            case 'crftp': self._reforcepass(args)
+            case 'del': self._del(args)
+            case 'upd': self._upd(args)
+            case 'crftp': self._crftp(args)
             case 'chmk': self._change_masterkey()
             case 'help': self._help(args)
             case 'exit': self._exit_csp()
@@ -535,7 +627,15 @@ class PromptCSP(StartCSP):
             case _: self.vs.print('Command Not Fount: try [CSP> help]', type='err')
 
     def _help(self, args: List[str]) -> None:
+        """
+        Displays help information based on specific command.
+        
+        Args:
+            args (List(str)): Command argument for show specific information
+            command.
+        """
         def _h_chmk():
+            """Special panel for command chmk"""
             description_text: Text = list_to_text(
                 CHMK_HELP['description'],
                 style='yellow',
@@ -572,24 +672,56 @@ class PromptCSP(StartCSP):
             case _: self.vs.console.print(create_general_menus(MAIN_HELP, main=True))
 
 class OneLinerCSP(StartCSP):
+    """
+    The OneLinerCSP class handles the one-liner mode of the CSP tool. It
+    inherits from the StartCSP class and processes command-line arguments
+    to perform actions accordingly.
+    """
     def __init__(self, args: Namespace) -> None:
+        """
+        Args:
+            args (Namespace): Namespace containing command-line arguments.
+        """
         super().__init__(); print()
         self.args = args
     
+    def _help(self, width: int = 85):
+        self.vs.console.print(create_general_menus(
+            MAIN_HELP_ONELINER,
+            main=True,
+            oneliner=True,
+            width=width,
+        ))
+        self.vs.console.print(create_general_menus(
+            ARGS_HELP_ONELINER,
+            oneliner=True,
+            width=width
+        ))
+        self._exit_csp(print_msg=False)
+    
     def start_mode(self):
+        """
+        Starts the one-liner mode of the CSP tool and executes actions based on
+        the provided command-line arguments.
+        """
         for argument, args in self.args.__dict__.items():
             if args is None: continue
             proc_args: Union[List[str], bool] = self._proc_instruction(args)
             match argument:
+                case 'help': self._help()
+
                 case 'change_masterkey': 
                     if not proc_args: continue
                     self._change_masterkey()
+
+                case 'craft_password':
+                    self._crftp(proc_args)
 
                 case 'execute':
                     tmp_prompt: PromptCSP = PromptCSP()
                     tmp_prompt._check_command(self.args.execute)
 
                 case 'add': self._add(proc_args)
-                case 'update': self._update(proc_args)
-                case 'delete': self._delete(proc_args)
+                case 'update': self._upd(proc_args)
+                case 'delete': self._del(proc_args)
                 case 'list': self._list(proc_args)
