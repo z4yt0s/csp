@@ -4,10 +4,12 @@
 from typing import NoReturn
 from argparse import Namespace
 
-from modules.StartCSP import StartCSP
+from modules.StartCSP import StartCSP, vs
 from utils.arguments import start_args
+from utils.visuals_setup import NAME, LOGO, FOOTERN
 
 def main() -> NoReturn:
+    vs.banner(NAME, LOGO, FOOTERN)
     args: Namespace = start_args()
     start_csp: StartCSP = StartCSP()
     
