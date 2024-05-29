@@ -1,22 +1,28 @@
 # str libraries
 from typing import (
-    Tuple,
     ClassVar,
-    Union,
-    List,
     NoReturn,
-    Any
+    Callable,
+    Optional,
+    Union,
+    Any,
+    Tuple,
+    List,
+    Dict
 )
+from functools import wraps
+from pathlib import Path
 from argparse import Namespace
 from time import sleep
 from signal import signal, SIGINT, SIG_IGN
 
 # third-party libraries
+from InquirerPy.prompts.list import ListPrompt
+from InquirerPy.utils import get_style
 from prompt_toolkit import PromptSession
 from prompt_toolkit.styles import Style
 from prompt_toolkit.shortcuts import CompleteStyle
 from prompt_toolkit.cursor_shapes import CursorShape
-from prompt_toolkit.clipboard import Clipboard
 from pyperclip import copy
 
 # test
@@ -24,13 +30,12 @@ from rich.progress import track
 from rich.panel import Panel
 from rich.text import Text
 from rich.console import Group
-# from prompt_toolkit.key_binding.bindings.named_commands import clear_screen
 
 # own libraries
 from modules.DataManagement import DataManagement
 from modules.Visuals import Visuals
 from modules.CreateSecurePassword import CreateSecurePasswords # change
-from modules.Crypt import Hasher, PassCrypt
+from modules.Crypt import PassCrypt
 from utils.prompt_config import (
     set_tmp_kb,
     set_csp_kb,
@@ -53,6 +58,94 @@ from utils.help_menu import (
 )
 from utils.visuals_setup import NAME, LOGO, FOOTERN
 
+vs: Visuals = Visuals()
+
+def create_tmp_session(
+    msg:        List[Tuple[str]],
+    password:   Optional[bool] = False,
+    style:      Optional[Dict[str, str]] = {'msg': Visuals.COLORS['green']}
+) -> PromptSession:
+    return PromptSession(
+        message=msg,
+        style=Style.from_dict(style),
+        is_password=password,
+        key_bindings=set_tmp_kb()
+    )
+
+class PathCSP:
+    """
+    La clase PathCSP se encarga de gestionar y realizar todas las operaciones
+    correspondiente a las rutas y ficheros del sistema.
+    """
+    ROOT_DIR: ClassVar[Path] = Path.home() / '.csp'
+    STYLE_OPTIONS: ClassVar[Dict[str, str]] = {
+        'questionmark':         f'fg:{Visuals.COLORS["yellow"]}',
+        'question':             f'fg:{Visuals.COLORS["yellow"]}',
+        'answermark':           f'fg:{Visuals.COLORS["green"]}',
+        'answered_question':    f'fg:{Visuals.COLORS["green"]}',
+        'answer':               f'fg:{Visuals.COLORS["purple"]} bold',
+        'pointer':              f'fg:{Visuals.COLORS["orange"]} bold',
+        'fuzzy_border':         f'fg:{Visuals.COLORS["blue"]}',
+        'skipped':              f'fg:{Visuals.COLORS["red"]}'
+    }
+
+    def __init__(self):
+        """
+        En primer lugar comprueba si existe la ruta de gestion de ficheros, sino
+        la crea, posteriormente detecta si existe ficheros .db, en el caso de que
+        no se detecten se generara uno con los parametros indicados por el usuario
+        """
+        if not PathCSP.ROOT_DIR.exists():
+            PathCSP.ROOT_DIR.mkdir()
+            
+        self.db_files: List[Path] = self._upd_list_files()
+        if not self.db_files:
+            self.create_db_file()
+    
+    def _upd_list_files(self) -> List[Path]:
+        return sorted(PathCSP.ROOT_DIR.glob('**/*.db'))
+
+    def create_db_file(self) -> None:
+        """
+        """
+        tmp_session: PromptSession = create_tmp_session(
+            msg=[('class:msg', '[^] Specify a name the database file: ')],
+        )
+        # in future add panel for list existing database files
+
+        while True:
+            db_name: str = f'{tmp_session.prompt()}.db'
+            db_file: Path = PathCSP.ROOT_DIR / db_name
+            if db_file in self.db_files:
+                vs.print(
+                    f'The file {db_file} already exists, choose another name',
+                    type='err',
+                    end='\n\n'
+                ); continue
+            db_file.touch()
+            DataManagement.create_database(db_file)
+            break
+        self.db_files = self._upd_list_files()
+
+    def select_databases(self) -> Path:
+        if len(self.db_files) == 1:
+            return self.db_files[0]
+        list_prompt: ListPrompt = ListPrompt(
+            message='Select database file:',
+            choices=[file.name for file in self.db_files],
+            style=get_style(PathCSP.STYLE_OPTIONS),
+            qmark='[?]',
+            amark='[^]',
+            mandatory=False,
+            show_cursor=False,
+            border=True,
+            vi_mode=True,
+            keybindings={"skip": [{"key": "c-c"}]}
+        )
+        path_db: Path = PathCSP.ROOT_DIR / list_prompt.execute()
+        print()
+        return path_db
+
 class StartCSP:
     """
     The StartCSP class serves as the enry point for the CSP tool. It handles
@@ -74,25 +167,32 @@ class StartCSP:
     _passcrypt: ClassVar[Any]
 
     def __init__(self) -> None:
-        self.vs: Visuals = Visuals()
-        self.data_mgmt: DataManagement = DataManagement()
-        self.tmp_session: PromptSession = PromptSession(
-            message=StartCSP.AUTH_QUESTION,
-            style=Style.from_dict({'msg': '#00b44e'}),
-            is_password=True,
-            key_bindings=set_tmp_kb()
-        )
-        if not StartCSP._authenticated:
-            self.vs.banner(NAME, LOGO, FOOTERN)
-            self.check_masterkey()
+        self.path_csp: PathCSP = PathCSP()
+        self.data_mgmt: Union[None, DataManagement] = None
+    
+    def need_auth(method: Callable) -> Callable:
+        @wraps(method)
+        def wrapper(self_cls, *args, **kwargs):
+            if not self_cls._authenticated:
+                vs.print(
+                    'Need authentication in some databases',
+                    type='err'
+                )
+                vs.print(
+                    'Try: [CSP> selectdb] for select database',
+                    type='war'
+                )
+                return None
+            return method(self_cls, *args, **kwargs)
+        return wrapper
 
-    def check_masterkey(self) -> NoReturn:
+    def check_masterkey(self, db_path: Path) -> NoReturn:
         """
         Check if the masterkey exits and realize the user authentication for
         start the tool. In case if all checkers are correct, change the value
         of StartCSP._authenticated to True
         """
-        if not self.data_mgmt.masterkey_exists():
+        if not self.data_mgmt.masterkey_exists(db_path):
             self.create_and_store_masterkey()
         if not self._check_credentials():
             self._exit_csp()
@@ -117,18 +217,22 @@ class StartCSP:
         """
         if not reset:
             welcome_msg()
+        tmp_session: PromptSession = create_tmp_session(
+            msg=StartCSP.AUTH_QUESTION,
+            password=True
+        )
         while True:
             try:
-                masterkey0: str = self.tmp_session.prompt()
-                if masterkey0 != self.tmp_session.prompt():
-                    self.vs.print(
+                masterkey0: str = tmp_session.prompt()
+                if masterkey0 != tmp_session.prompt():
+                    vs.print(
                         'Password must be the same',
                         type='err',
                         end='\n'
                     )
                     continue
                 if not CreateSecurePasswords.is_strong_password(masterkey0):
-                    self.vs.print(
+                    vs.print(
                         'The password does not meet the requirements',
                         type='err',
                         end='\n'
@@ -141,7 +245,7 @@ class StartCSP:
             self.data_mgmt.re_or_set_masterkey(masterkey0, mode='reset')
             return masterkey0
         self.data_mgmt.re_or_set_masterkey(masterkey0)
-        self.vs.print('Masterkey inserted correctly', type='inf', end='\n')
+        vs.print('Masterkey inserted correctly', type='inf', end='\n')
     
     def _check_credentials(self, masterkey: str = None) -> bool:
         """
@@ -154,14 +258,18 @@ class StartCSP:
             bool: True if the credentials are correct, False if the attempts 
             are exceeded.
         """
+        tmp_session: PromptSession = create_tmp_session(
+            msg=StartCSP.AUTH_QUESTION,
+            password=True
+        )
         attempts: int = 3
         while attempts > 0:
             try:
-                self.vs.print('Login CSP', type='inf')
-                masterkey: str = self.tmp_session.prompt()
+                vs.print('Login CSP', type='inf')
+                masterkey: str = tmp_session.prompt()
                 if not self.data_mgmt.check_master_key(masterkey):
                     attempts -= 1
-                    self.vs.print(
+                    vs.print(
                         f'Incorrect masterkey. Attempts remaining: {attempts}',
                         type='err',
                         end='\n',
@@ -173,9 +281,10 @@ class StartCSP:
                 return True
             except KeyboardInterrupt as ki:
                 self._exit_csp() if str(ki) == 'ControlD' else print(); continue
-        self.vs.print(f'It has exceeded attempts', type='err')
+        vs.print(f'It has exceeded attempts', type='err')
         return False
     
+    @need_auth
     def _change_masterkey(self) -> None:
         """
         Change the masterkey of the csp database, in this process it checks the
@@ -184,42 +293,46 @@ class StartCSP:
         masterkey. If its create correctly, the old entries decrypted we encrypt
         in base a new masterkey. And show the progress with a bar.
         """
+        tmp_session: PromptSession = create_tmp_session(
+            msg=StartCSP.AUTH_QUESTION,
+            password=True
+        )
         signal(SIGINT, SIG_IGN)
         
         # check old masterkey and decrypt all entries of csp database
-        self.vs.print(
+        vs.print(
             'Executing the masterkey change process..',
             type='inf',
             bad_render=True
         )
-        self.vs.print(
+        vs.print(
             'Enter the actual masterkey to decryption of existing data.',
             type='inf',
         )
-        old_masterkey: str = self.tmp_session.prompt()
+        old_masterkey: str = tmp_session.prompt()
         if not self.data_mgmt.check_master_key(old_masterkey):
-            self.vs.print('The masterkey its invalid', type='err')
+            vs.print('The masterkey its invalid', type='err')
             return None
         old_crypt_raw_data = self.data_mgmt.list_data()
         old_raw_data = self._decrypt_listed_data(old_crypt_raw_data)
         
         # create new masterkey and cypher the old_raw_data with new masterkey
-        self.vs.print(
+        vs.print(
             'Starting the process to create a new masterkey',
             type='inf',
             start='\n'
         )
         new_masterkey = self.create_and_store_masterkey(reset=True)
         StartCSP._passcrypt = PassCrypt(new_masterkey)
-        self.vs.print(
+        vs.print(
             'Masterkey was created and stored succesfully',
             type='inf'
         )
-        self.vs.print(
+        vs.print(
             'Beggining the process to encrypt the existing passwords',
             type='inf'
         )
-        self.vs.print(
+        vs.print(
             f'Numbers of entries detected: {len(old_raw_data)}',
             type='inf',
             bad_render=True
@@ -250,6 +363,7 @@ class StartCSP:
             case 'prompt': return PromptCSP()
             case 'oneliner': return OneLinerCSP(args)
 
+    @need_auth
     def _list(self, args: List[str]) -> None:
         """
         Detect if the user wants to list the entire database or if he wants
@@ -268,7 +382,7 @@ class StartCSP:
             return None
         crypt_raw_data: List[Tuple[Union[int, str]]] = self.data_mgmt.list_data()
         raw_data: List[str] = self._decrypt_listed_data(crypt_raw_data)
-        self.vs.render_table_db(raw_data)
+        vs.render_table_db(raw_data)
 
     def _list_specific(self, args: List[str]) -> None:
         """
@@ -288,12 +402,12 @@ class StartCSP:
         try: 
             field, data_to_find = args 
         except ValueError as ve: 
-            self.vs.print(
+            vs.print(
                 f'The atributes specify are wrong -> {ve}',
                 type='err',
                 bad_render=True
             )
-            self.vs.print(
+            vs.print(
                 'Try: [CSP> help] to see the help menu',
                 type='war'
             )
@@ -305,13 +419,14 @@ class StartCSP:
         )
         raw_data = self._decrypt_listed_data(crypt_raw_data)
         if len(raw_data) == 0:
-            self.vs.print(
+            vs.print(
                 'The requested value was not found in the database',
                 type='err'
             )
             return None
-        self.vs.render_table_db(raw_data)
+        vs.render_table_db(raw_data)
 
+    @need_auth
     def _add(self, args: List[str]) -> None:
         """
         Create a new entry to database, and encrypt password.
@@ -336,11 +451,12 @@ class StartCSP:
         crypt_raw_pass: Tuple[str] = StartCSP._passcrypt.encrypt(password)
         password = f'{crypt_raw_pass[0]}|{crypt_raw_pass[1]}|{crypt_raw_pass[2]}'
         if self.data_mgmt.new_entry(password, site, username):
-            self.vs.print(
+            vs.print(
                 f'Data inserted correcly', 
                 type='inf'
             )
 
+    @need_auth
     def _del(self, args: List[str]) -> None:
         """
         Delete data from the database based on the provided id. If the provided
@@ -366,7 +482,7 @@ class StartCSP:
             """
             if not self._check_exists_id(id): return False
             if self.data_mgmt.delete_data(id):
-                self.vs.print(
+                vs.print(
                     f'Data Deleted Correctly: id {id}',
                     type='inf',
                     bad_render=True
@@ -398,6 +514,7 @@ class StartCSP:
             # map 'list(map())' forces immediate execution of map object
             list(map(_del_id, range(id_beg, id_end + 1)))
 
+    @need_auth
     def _upd(self, args: List[str], skip_msg: bool = False) -> None:
         """
         Update data in the database based ont he privided field, new data
@@ -415,12 +532,12 @@ class StartCSP:
         try:
             field, data_upd, id = args
         except ValueError as ve: 
-            self.vs.print(
+            vs.print(
                 f'The atributes specify are wrong -> {ve}',
                 type='err',
                 bad_render=True
             )
-            self.vs.print(
+            vs.print(
                 'Try: [CSP> help] to see the help menu',
                 type='war'
             )
@@ -432,7 +549,7 @@ class StartCSP:
             data_upd: str = f'{crypt_data_upd[0]}|{crypt_data_upd[1]}|{crypt_data_upd[2]}'
 
         if self.data_mgmt.update_data(field, data_upd, id) and not skip_msg:
-            self.vs.print( 'Data Updated Correctly', type='inf')
+            vs.print( 'Data Updated Correctly', type='inf')
 
     def _crftp(self, args: List[str]) -> None:
         """
@@ -459,13 +576,13 @@ class StartCSP:
         )
 
         reforce_pass: str = csp.create_strong_pass()
-        self.vs.print('Password reforce succesfull', type='inf')
+        vs.print('Password reforce succesfull', type='inf')
         if not csp.is_strong_password(reforce_pass):
             msg0: str = 'The generated password does not meet security '
             msg1: str = 'requirements. Use it at your own risk'
-            self.vs.print(f'{msg0}{msg1}', type='war')
+            vs.print(f'{msg0}{msg1}', type='war')
 
-        self.vs.print(
+        vs.print(
             f'{reforce_pass} -> copied to clipboard',
             type='proc',
             bad_render=True
@@ -487,7 +604,7 @@ class StartCSP:
         if len(id_data) != 0:
             return True
 
-        self.vs.print(
+        vs.print(
             f'The id: {id} does not exist, therefore the action cannot be executed',
             type='err',
             bad_render=True
@@ -503,10 +620,10 @@ class StartCSP:
             NoReturn: end the program.
         """
         if print_msg:
-            self.vs.print('Save and closing connection to database', type='inf')
+            vs.print('Save and closing connection to database', type='inf')
         self.data_mgmt.save_and_exit(True)
         if print_msg:
-            self.vs.print('Exiting..', type='err', bad_render=True)
+            vs.print('Exiting..', type='err', bad_render=True)
         exit(0)
     
     def _proc_instruction(
@@ -621,10 +738,17 @@ class PromptCSP(StartCSP):
             case 'upd': self._upd(args)
             case 'crftp': self._crftp(args)
             case 'chmk': self._change_masterkey()
+            case 'selectdb':
+                db_path: Path = self.path_csp.select_databases()
+                self.data_mgmt = DataManagement(db_path)
+                self.check_masterkey(db_path)
+                self._authenticated = True
+            case 'newdb':
+                self.path_csp.create_db_file()
             case 'help': self._help(args)
             case 'exit': self._exit_csp()
             case '^C': pass
-            case _: self.vs.print('Command Not Fount: try [CSP> help]', type='err')
+            case _: vs.print('Command Not Fount: try [CSP> help]', type='err')
 
     def _help(self, args: List[str]) -> None:
         """
@@ -642,19 +766,19 @@ class PromptCSP(StartCSP):
                 justify='full'
             )
 
-            description_panel: Panel = self.vs.create_panel(
+            description_panel: Panel = vs.create_panel(
                 description_text,
                 title='description',
                 title_align='r',
-                border_style=self.vs.COLORS['i_dark_yellow']
+                border_style=vs.COLORS['i_dark_yellow']
             )
-            panel_group: Group = self.vs.create_panel(renderable=[
+            panel_group: Group = vs.create_panel(renderable=[
                 description_panel
             ])
-            return self.vs.create_panel(
+            return vs.create_panel(
                 panel_group,
                 title='chmk',
-                border_style=self.vs.COLORS['i_grey'],
+                border_style=vs.COLORS['i_grey'],
                 padding=(0, 0),
                 width=70
             )
@@ -663,13 +787,13 @@ class PromptCSP(StartCSP):
         except IndexError: args: str = 'None'
 
         match args:
-            case 'list': self.vs.console.print(create_general_menus(LIST_HELP))
-            case 'add': self.vs.console.print(create_general_menus(ADD_HELP))
-            case 'upd': self.vs.console.print(create_general_menus(UPD_HELP))
-            case 'del': self.vs.console.print(create_general_menus(DEL_HELP))
-            case 'crftp': self.vs.console.print(create_general_menus(CRFTP_HELP))
-            case 'chmk': self.vs.console.print(_h_chmk())
-            case _: self.vs.console.print(create_general_menus(MAIN_HELP, main=True))
+            case 'list': vs.console.print(create_general_menus(LIST_HELP))
+            case 'add': vs.console.print(create_general_menus(ADD_HELP))
+            case 'upd': vs.console.print(create_general_menus(UPD_HELP))
+            case 'del': vs.console.print(create_general_menus(DEL_HELP))
+            case 'crftp': vs.console.print(create_general_menus(CRFTP_HELP))
+            case 'chmk': vs.console.print(_h_chmk())
+            case _: vs.console.print(create_general_menus(MAIN_HELP, main=True))
 
 class OneLinerCSP(StartCSP):
     """
@@ -686,13 +810,13 @@ class OneLinerCSP(StartCSP):
         self.args = args
     
     def _help(self, width: int = 85):
-        self.vs.console.print(create_general_menus(
+        vs.console.print(create_general_menus(
             MAIN_HELP_ONELINER,
             main=True,
             oneliner=True,
             width=width,
         ))
-        self.vs.console.print(create_general_menus(
+        vs.console.print(create_general_menus(
             ARGS_HELP_ONELINER,
             oneliner=True,
             width=width
