@@ -10,6 +10,9 @@ from typing import (
     Dict,
     Literal
 )
+from functools import wraps
+from sys import exc_info
+from pathlib import Path
 from sqlite3 import (
     connect,
     Cursor,
@@ -17,9 +20,6 @@ from sqlite3 import (
     Error,
     OperationalError
 )
-from functools import wraps
-from os import path
-from sys import exc_info
 
 from modules.Crypt import Hasher
 
@@ -28,82 +28,57 @@ class DataManagement:
     DataManagement class handles database operations for the CSP tool
 
     Attributes:
-        _instance (ClassVar[Any]): Stores the single instance of DataManagement.
-        _DB_PATH (ClassVar[str]): The path to the SQLite database file.
         _QUERIES (ClassVar[Dict[str, str]]): A dictionary containing predefinied
         SQL queries.
     """
-    _instance: ClassVar[Any] = None
-    #_DB_PATH: str = '~/.csp/data.db'
-    _DB_PATH: ClassVar[str] = './test.db'
     _QUERIES: ClassVar[Dict[str, str]] = {
-    'create_tb': '''
-        CREATE TABLE IF NOT EXISTS login (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            site TEXT,
-            username TEXT,
-            password TEXT REQUIRED
-        )
-    ''',
-    'set_masterkey': '''
-        INSERT INTO login (site, username, password)
-        VALUES ('csp', 'masterkey', ?)
-    ''',
-    'set_data': '''
-        INSERT INTO login (site, username, password)
-        VALUES (?, ?, ?)
-    ''',
-    'get_masterkey': '''
-        SELECT password FROM login
-        WHERE id = 1
-    ''',
-    'get_data': '''
-        SELECT * FROM login
-        WHERE id != 1
-    ''',
-    #'get_specific_data': 'SELECT password FROM login WHERE | = ? AND id != 1',
-    'get_specific_data': '''
-        SELECT * FROM login
-        WHERE id != 1 AND | = ?
-    ''',
-    'update_masterkey': '''
-        UPDATE login SET password = ?
-        WHERE id = 1
-    ''',
-    'update_data': '''
-        UPDATE login SET | = ?
-        WHERE id != 1 AND id = ?
-    ''',
-    'drop_data': '''
-        DELETE FROM login
-        WHERE id != 1 and id = ?
-    ''',
-    'counter_entries': '''
-        SELECT COUNT(*) FROM login
-    '''
+        'create_tb': '''
+            CREATE TABLE IF NOT EXISTS login (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                site TEXT,
+                username TEXT,
+                password TEXT REQUIRED
+            )
+        ''',
+        'set_masterkey': '''
+            INSERT INTO login (site, username, password)
+            VALUES ('csp', 'masterkey', ?)
+        ''',
+        'set_data': '''
+            INSERT INTO login (site, username, password)
+            VALUES (?, ?, ?)
+        ''',
+        'get_masterkey': '''
+            SELECT password FROM login
+            WHERE id = 1
+        ''',
+        'get_data': '''
+            SELECT * FROM login
+            WHERE id != 1
+        ''',
+        #'get_specific_data': 'SELECT password FROM login WHERE | = ? AND id != 1',
+        'get_specific_data': '''
+            SELECT * FROM login
+            WHERE id != 1 AND | = ?
+        ''',
+        'update_masterkey': '''
+            UPDATE login SET password = ?
+            WHERE id = 1
+        ''',
+        'update_data': '''
+            UPDATE login SET | = ?
+            WHERE id != 1 AND id = ?
+        ''',
+        'drop_data': '''
+            DELETE FROM login
+            WHERE id != 1 and id = ?
+        ''',
+        'counter_entries': '''
+            SELECT COUNT(*) FROM login
+        '''
     }
 
-    def __new__(cls, *args, **kwargs) -> Self:
-        """
-        Implementation of the Singleton pattern for the DataManagement class.
-        It ensures that only one instance of this class is created during the
-        entire runtime. If an instance already exists, it returns the
-        existing instance. If it does not, it creates a new one.
-
-        Args:
-            masterkey (str, optional): Master key for database authentication.
-            default None.
-
-        Returns:
-            Self: Instance of the DataManagement class.
-        """
-        if cls._instance is not None:
-            return cls._instance
-        cls._create_database()
-        cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self, *args, **kwargs) -> None:
+    def __init__(self, db_path: Path) -> None:
         """
         Initializes a DataManagement instace.
 
@@ -111,7 +86,7 @@ class DataManagement:
             conn (Connection): Represents the connection to the SQLite database
             cursor (Cursor): Represents the cursor used to execute SQL queries
         """
-        self.conn: Connection = connect(DataManagement._DB_PATH)
+        self.conn: Connection = connect(db_path)
         self.cursor: Cursor = self.conn.cursor()
 
     def handler_err_db(method: Callable) -> Callable:
@@ -168,7 +143,7 @@ class DataManagement:
             raise KeyError(msg) from ke
 
     @classmethod
-    def _create_database(cls) -> Union[bool, None]:
+    def create_database(cls, db_path: Path) -> Union[bool, None]:
         """
         Create the SQLite database if the doesn't exist and set the master key.
 
@@ -180,7 +155,7 @@ class DataManagement:
             database, None otherwise.
         """
         try:
-            conn: Connection = connect(cls._DB_PATH)
+            conn: Connection = connect(db_path)
             cursor: Cursor = conn.cursor()
             # create table
             query = cls.predefined_sql('create_tb')
@@ -192,7 +167,7 @@ class DataManagement:
             conn.close()
 
     @classmethod
-    def masterkey_exists(cls, conn: Connection = None) -> bool:
+    def masterkey_exists(cls, db_path: Path, conn: Connection = None) -> bool:
         """
         Checks if the master key exists in the database.
 
@@ -204,7 +179,7 @@ class DataManagement:
         """
         try:
             if conn is None:
-                conn: Connection = connect(cls._DB_PATH)
+                conn: Connection = connect(db_path)
             cursor: Cursor = conn.cursor()
             query: str = cls.predefined_sql('counter_entries')
             cursor.execute(query)
