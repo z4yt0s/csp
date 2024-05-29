@@ -82,6 +82,8 @@ def set_completer() -> NestedCompleter:
         },
         'chmk': None,
         'crftp': None,
+        'selectdb': None,
+        'newdb': None,
         'exit': None,
         'help': {
             'list': None,
