@@ -7,7 +7,7 @@ from rich.style import StyleType
 from rich.console import JustifyMethod, Group
 from rich.panel import Panel
 
-# f
+# own libraries
 from modules.Visuals import Visuals
 
 # Prompt Mode
