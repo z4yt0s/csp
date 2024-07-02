@@ -17,12 +17,7 @@ from time import sleep
 from signal import signal, SIGINT, SIG_IGN
 
 # third-party libraries
-from InquirerPy.prompts.list import ListPrompt
-from InquirerPy.utils import get_style
 from prompt_toolkit import PromptSession
-from prompt_toolkit.styles import Style
-from prompt_toolkit.shortcuts import CompleteStyle
-from prompt_toolkit.cursor_shapes import CursorShape
 from pyperclip import copy
 
 # test
@@ -32,16 +27,14 @@ from rich.text import Text
 from rich.console import Group
 
 # own libraries
-from modules.DataManagement import DataManagement
 from modules.Visuals import Visuals
+from modules.path import PathCSP
+from modules.prompt import Prompt
+from modules.DataManagement import DataManagement
 from modules.CreateSecurePassword import CreateSecurePasswords # change
 from modules.Crypt import PassCrypt
-from utils.prompt_config import (
-    set_tmp_kb,
-    set_csp_kb,
-    set_completer,
-    welcome_msg
-)
+from utils.prompt_config import welcome_msg
+from utils.proc import safe_access_to_array
 from utils.help_menu import (
     dict_to_text,
     list_to_text,
@@ -56,95 +49,8 @@ from utils.help_menu import (
     MAIN_HELP_ONELINER,
     ARGS_HELP_ONELINER,
 )
-from utils.visuals_setup import NAME, LOGO, FOOTERN
 
 vs: Visuals = Visuals()
-
-def create_tmp_session(
-    msg:        List[Tuple[str]],
-    password:   Optional[bool] = False,
-    style:      Optional[Dict[str, str]] = {'msg': Visuals.COLORS['green']}
-) -> PromptSession:
-    return PromptSession(
-        message=msg,
-        style=Style.from_dict(style),
-        is_password=password,
-        key_bindings=set_tmp_kb()
-    )
-
-class PathCSP:
-    """
-    La clase PathCSP se encarga de gestionar y realizar todas las operaciones
-    correspondiente a las rutas y ficheros del sistema.
-    """
-    ROOT_DIR: ClassVar[Path] = Path.home() / '.csp'
-    STYLE_OPTIONS: ClassVar[Dict[str, str]] = {
-        'questionmark':         f'fg:{Visuals.COLORS["yellow"]}',
-        'question':             f'fg:{Visuals.COLORS["yellow"]}',
-        'answermark':           f'fg:{Visuals.COLORS["green"]}',
-        'answered_question':    f'fg:{Visuals.COLORS["green"]}',
-        'answer':               f'fg:{Visuals.COLORS["purple"]} bold',
-        'pointer':              f'fg:{Visuals.COLORS["orange"]} bold',
-        'fuzzy_border':         f'fg:{Visuals.COLORS["blue"]}',
-        'skipped':              f'fg:{Visuals.COLORS["red"]}'
-    }
-
-    def __init__(self):
-        """
-        En primer lugar comprueba si existe la ruta de gestion de ficheros, sino
-        la crea, posteriormente detecta si existe ficheros .db, en el caso de que
-        no se detecten se generara uno con los parametros indicados por el usuario
-        """
-        if not PathCSP.ROOT_DIR.exists():
-            PathCSP.ROOT_DIR.mkdir()
-            
-        self.db_files: List[Path] = self._upd_list_files()
-        if not self.db_files:
-            self.create_db_file()
-    
-    def _upd_list_files(self) -> List[Path]:
-        return sorted(PathCSP.ROOT_DIR.glob('**/*.db'))
-
-    def create_db_file(self) -> None:
-        """
-        """
-        tmp_session: PromptSession = create_tmp_session(
-            msg=[('class:msg', '[^] Specify a name the database file: ')],
-        )
-        # in future add panel for list existing database files
-
-        while True:
-            db_name: str = f'{tmp_session.prompt()}.db'
-            db_file: Path = PathCSP.ROOT_DIR / db_name
-            if db_file in self.db_files:
-                vs.print(
-                    f'The file {db_file} already exists, choose another name',
-                    type='err',
-                    end='\n\n'
-                ); continue
-            db_file.touch()
-            DataManagement.create_database(db_file)
-            break
-        self.db_files = self._upd_list_files()
-
-    def select_databases(self) -> Path:
-        if len(self.db_files) == 1:
-            return self.db_files[0]
-        list_prompt: ListPrompt = ListPrompt(
-            message='Select database file:',
-            choices=[file.name for file in self.db_files],
-            style=get_style(PathCSP.STYLE_OPTIONS),
-            qmark='[?]',
-            amark='[^]',
-            mandatory=False,
-            show_cursor=False,
-            border=True,
-            vi_mode=True,
-            keybindings={"skip": [{"key": "c-c"}]}
-        )
-        path_db: Path = PathCSP.ROOT_DIR / list_prompt.execute()
-        print()
-        return path_db
 
 class StartCSP:
     """
@@ -179,14 +85,14 @@ class StartCSP:
                     type='err'
                 )
                 vs.print(
-                    'Try: [CSP> selectdb] for select database',
+                    'Try: csp> seldb for select database',
                     type='war'
                 )
                 return None
             return method(self_cls, *args, **kwargs)
         return wrapper
 
-    def check_masterkey(self, db_path: Path) -> NoReturn:
+    def check_masterkey(self, db_path: Path) -> None:
         """
         Check if the masterkey exits and realize the user authentication for
         start the tool. In case if all checkers are correct, change the value
@@ -217,7 +123,7 @@ class StartCSP:
         """
         if not reset:
             welcome_msg()
-        tmp_session: PromptSession = create_tmp_session(
+        tmp_session: PromptSession = Prompt.create_tmp_prompt(
             msg=StartCSP.AUTH_QUESTION,
             password=True
         )
@@ -258,7 +164,7 @@ class StartCSP:
             bool: True if the credentials are correct, False if the attempts 
             are exceeded.
         """
-        tmp_session: PromptSession = create_tmp_session(
+        tmp_session: PromptSession = Prompt.create_tmp_prompt(
             msg=StartCSP.AUTH_QUESTION,
             password=True
         )
@@ -290,10 +196,10 @@ class StartCSP:
         Change the masterkey of the csp database, in this process it checks the
         old masterkey and stores it. Subsequently it gets all the entries from
         database and decrypts them. In this point start the process to set a new
-        masterkey. If its create correctly, the old entries decrypted we encrypt
+        masterke[] estructurar bien la libreriasy. If its create correctly, the old entries decrypted we encrypt
         in base a new masterkey. And show the progress with a bar.
         """
-        tmp_session: PromptSession = create_tmp_session(
+        tmp_session: PromptSession = Prompt.create_tmp_prompt(
             msg=StartCSP.AUTH_QUESTION,
             password=True
         )
@@ -341,8 +247,8 @@ class StartCSP:
         for entry in track(old_raw_data, description='[bold blue]Encrypting[/bold blue]'):
             new_data: List[Union[str, int]] = [
                 'password',
-                entry[3],
-                entry[0]
+                safe_access_to_array(entry, 3),
+                safe_access_to_array(entry)
             ]
             self._upd(new_data, skip_msg=True)
             sleep(0.10)
@@ -401,6 +307,8 @@ class StartCSP:
         """
         try: 
             field, data_to_find = args 
+            if field not in ['id', 'site', 'username', 'password']:
+                raise ValueError('the field used to make the query is not valid')
         except ValueError as ve: 
             vs.print(
                 f'The atributes specify are wrong -> {ve}',
@@ -408,7 +316,7 @@ class StartCSP:
                 bad_render=True
             )
             vs.print(
-                'Try: [CSP> help] to see the help menu',
+                f'Try: csp> help list to see the help menu',
                 type='war'
             )
             return None
@@ -443,11 +351,23 @@ class StartCSP:
         site: str = None
         username: str = None
         password: str = None
-        if len(args) == 3:
-            site, username, password = args
-        elif len(args) == 2:
-            username, password = args
-
+        match len(args):
+            case 3:
+                site, username, password = args
+            case 2:
+                username, password = args
+            case _ if len(args) > 3:
+                vs.print(
+                    'To much args, using only the three first',
+                    type='err'
+                )
+                site, username, password = args[:3]
+            case _:
+                vs.print(
+                    'Not enough values were provided to add to the database',
+                    type='err'
+                )
+                return
         crypt_raw_pass: Tuple[str] = StartCSP._passcrypt.encrypt(password)
         password = f'{crypt_raw_pass[0]}|{crypt_raw_pass[1]}|{crypt_raw_pass[2]}'
         if self.data_mgmt.new_entry(password, site, username):
@@ -538,7 +458,7 @@ class StartCSP:
                 bad_render=True
             )
             vs.print(
-                'Try: [CSP> help] to see the help menu',
+                'Try: csp> help upd to see the help menu',
                 type='war'
             )
             return None
@@ -563,13 +483,16 @@ class StartCSP:
         Returns:
             None: This method does not return any value.
         """
+        if not args:
+            vs.print('Password not provided, cannot be craft', type='err')
+            return
+
+        password: str = safe_access_to_array(args)
+        separator: str = safe_access_to_array(args, 1, err_return=None)
         if len(args) > 2:
             password = args
             separator = ' '
             password: str = separator.join(password)
-        else:
-            password: str = args[0]
-            separator: str = args[1]
         csp: CreateSecurePasswords = CreateSecurePasswords(
             password=password,
             separator=separator
@@ -619,13 +542,17 @@ class StartCSP:
         Return:
             NoReturn: end the program.
         """
-        if print_msg:
-            vs.print('Save and closing connection to database', type='inf')
-        self.data_mgmt.save_and_exit(True)
+        if StartCSP._authenticated:
+            if print_msg:
+                vs.print('Save and closing connection to database', type='inf')
+            self.data_mgmt.save_and_exit(True)
+            StartCSP._authenticated = False
+            self.current_db = ''
+            return
         if print_msg:
             vs.print('Exiting..', type='err', bad_render=True)
         exit(0)
-    
+
     def _proc_instruction(
         self,
         instruction: Union[str, bool]
@@ -703,14 +630,21 @@ class PromptCSP(StartCSP):
             user input.
         """
         super().__init__()
-        self.csp_session: PromptSession = PromptSession(
-            message=[('class:prompt', '\nCSP> ')],
-            style=Style.from_dict({'prompt': '#227547 bold'}),
-            completer=set_completer(),
-            complete_style=CompleteStyle.READLINE_LIKE,
-            cursor=CursorShape.BEAM,
-            key_bindings=set_csp_kb(),
-        )
+        self.prmt: Prompt = Prompt()
+        self.current_db: str = ''
+
+    def _seldb(self) -> None:
+        db_path: Path = self.path_csp.select_databases()
+        if self.current_db == db_path:
+            vs.print(
+                'The selected database is the one currently in use',
+                type='war'
+            )
+            return
+        self.data_mgmt = DataManagement(db_path)
+        self.check_masterkey(db_path)
+        self._authenticated = True
+        self.current_db = db_path
 
     def start_mode(self) -> None:
         """
@@ -718,8 +652,12 @@ class PromptCSP(StartCSP):
         """
         while True:
             try:
-                instruction: str = self.csp_session.prompt()
+                instruction: str = self.prmt.csp_session.prompt()
                 self._check_command(instruction)
+                self.prmt.csp_session = self.prmt.upd_prompt(
+                    db_name=self.current_db,
+                    history=self.prmt.csp_session.history
+                )
             except KeyboardInterrupt:
                 self._check_command('^C')
 
@@ -738,17 +676,13 @@ class PromptCSP(StartCSP):
             case 'upd': self._upd(args)
             case 'crftp': self._crftp(args)
             case 'chmk': self._change_masterkey()
-            case 'selectdb':
-                db_path: Path = self.path_csp.select_databases()
-                self.data_mgmt = DataManagement(db_path)
-                self.check_masterkey(db_path)
-                self._authenticated = True
+            case 'seldb': self._seldb()
             case 'newdb':
-                self.path_csp.create_db_file()
+                self.path_csp.create_db_file(arg=safe_access_to_array(args))
             case 'help': self._help(args)
             case 'exit': self._exit_csp()
             case '^C': pass
-            case _: vs.print('Command Not Fount: try [CSP> help]', type='err')
+            case _: vs.print('Command Not Found: try csp> help', type='err')
 
     def _help(self, args: List[str]) -> None:
         """
@@ -783,10 +717,8 @@ class PromptCSP(StartCSP):
                 width=70
             )
 
-        try: args: str = args[0]
-        except IndexError: args: str = 'None'
-
-        match args:
+        arg: str = safe_access_to_array(args)
+        match arg:
             case 'list': vs.console.print(create_general_menus(LIST_HELP))
             case 'add': vs.console.print(create_general_menus(ADD_HELP))
             case 'upd': vs.console.print(create_general_menus(UPD_HELP))
